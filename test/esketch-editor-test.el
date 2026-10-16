@@ -300,5 +300,12 @@
       (should (stringp d))
       (should (string-match-p "browser" d)))))
 
+(ert-deftest esketch-editor-test-image-ignores-selected-frame ()
+  "Whether a drawing is an image depends on SVG support, not on the frame
+that happens to be selected (emacsclient -e runs in the daemon's terminal)."
+  (skip-unless (image-type-available-p 'svg))
+  (cl-letf (((symbol-function 'display-images-p) (lambda (&optional _) nil)))
+    (should (eq (car (esketch-image "<svg xmlns=\"http://www.w3.org/2000/svg\"/>" 1)) 'image))))
+
 (provide 'esketch-editor-test)
 ;;; esketch-editor-test.el ends here

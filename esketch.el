@@ -145,7 +145,7 @@ Only one rectangle, ellipse, diamond or text has a handle."
 (defun esketch-image (svg scale &optional name)
   "SVG as an image at SCALE, or a note when this Emacs cannot show SVG
 (a terminal, or a build without librsvg): the browser editor still works."
-  (if (and (or noninteractive (display-images-p)) (image-type-available-p 'svg))
+  (if (image-type-available-p 'svg)
       (create-image svg 'svg t :scale scale)
     (propertize (format "[drawing%s: this Emacs cannot show SVG; b edits it in the browser]"
                         (if name (concat " " name) ""))
