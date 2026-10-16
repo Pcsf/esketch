@@ -1,7 +1,7 @@
 // Builds assets/esketch-page.html: Excalidraw 0.18.1 (MIT) with React, its
 // CSS and every font except the CJK one, all inlined into one file that runs
 // from file:// with no network.  Emacs fills in the two placeholders.
-import { readFileSync, writeFileSync, readdirSync, statSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "fs";
 import { join, resolve } from "path";
 
 const r = await Bun.build({
@@ -36,5 +36,6 @@ const html = `<!doctype html>
 <script type="module">${js.replace(/<\/script/gi, "<\\/script")}</script>
 </body></html>
 `;
+mkdirSync("assets", { recursive: true });
 writeFileSync("assets/esketch-page.html", html);
 console.log(`assets/esketch-page.html: ${(statSync("assets/esketch-page.html").size / 1e6).toFixed(2)} MB, ${Object.keys(fonts).length} fonts`);
