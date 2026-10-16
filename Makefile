@@ -9,7 +9,7 @@ BATCH  = $(EMACS) -Q --batch -L .
 EL     = esketch-json.el esketch-model.el esketch-rough.el esketch-freehand.el esketch-fonts.el esketch-render.el esketch.el esketch-org.el
 BUILD  = build
 
-.PHONY: all compile test test-el test-render ref-basic test-render-corpus audit corpus test-corpus fonts page verify-page verify-firefox test-emacs27 clean
+.PHONY: all compile test test-el bench test-render ref-basic test-render-corpus audit corpus test-corpus fonts page verify-page verify-firefox test-emacs27 clean
 
 all: compile test audit
 
@@ -19,7 +19,12 @@ compile:
 test: test-el test-render
 
 test-el: compile
-	$(BATCH) -L test -l test/esketch-test.el -l test/esketch-rough-test.el -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit
+	$(BATCH) -L test -l test/esketch-test.el -l test/esketch-rough-test.el -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el -l test/esketch-gesture-test.el -l test/esketch-integrity-test.el -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit
+
+# Drag latency at 10, 100 and 500 elements (ESKETCH_BENCH_SIZES="10 100" to
+# change the sizes).
+bench: compile
+	$(BATCH) -l test/esketch-bench.el -f esketch-bench-run
 
 # Runtime files must not reach outside Emacs, nor use functions newer than
 # Emacs 27.1.  Each scan also runs against a planted file and must hit it,
@@ -136,4 +141,4 @@ test-emacs27:
 	  emacs -Q --batch -L . --eval "(setq byte-compile-error-on-warn t)" -f batch-byte-compile $(EL) && \
 	  emacs -Q --batch -L . -L test -l test/esketch-test.el -l test/esketch-rough-test.el \
 	    -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el \
-	    -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit'
+	    -l test/esketch-gesture-test.el -l test/esketch-integrity-test.el -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit'

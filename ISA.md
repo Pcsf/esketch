@@ -1,6 +1,6 @@
 ---
-phase: climbing
-progress: 27/37
+phase: complete
+progress: 37/37
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -144,7 +144,7 @@ alike.
 Why: small edits should not need a browser, and the drawing should live in the
 buffer the user is already in.
 
-- [ ] ISC-8: In a GUI frame the user can create rectangle, ellipse, diamond,
+- [x] ISC-8: In a GUI frame the user can create rectangle, ellipse, diamond,
   arrow and text, select by click, move by drag, resize, retitle, delete, and
   undo/redo every one of those. Probe: ERT drives the commands with synthetic
   mouse events and checks the model after each step.
@@ -157,17 +157,17 @@ buffer the user is already in.
 - [x] ISC-9: An arrow drawn from one shape to another binds to both, and
   dragging either shape keeps it attached. Probe: ERT plus a viewed screenshot
   of a dragged pair.
-- [ ] ISC-10: README states the drag latency `make bench` measured at 10, 100
+- [x] ISC-10: README states the drag latency `make bench` measured at 10, 100
   and 500 elements. Probe: `make bench` output, README read.
-- [ ] ISC-10.1: README names the element count above which the browser page is
+- [x] ISC-10.1: README names the element count above which the browser page is
   the recommended editor, derived from the ISC-10 figures. Probe: README read.
-- [ ] ISC-11: Keyboard-only editing works too: select next/previous element,
+- [x] ISC-11: Keyboard-only editing works too: select next/previous element,
   move by grid step, edit text, connect two selected shapes. Probe: ERT.
-- [ ] ISC-26: Right-clicking a shape opens a menu that sets its stroke colour,
+- [x] ISC-26: Right-clicking a shape opens a menu that sets its stroke colour,
   fill, stroke width, roughness and font size, and right-clicking the
   background opens a menu to add a shape there. Probe: ERT invokes each menu
   entry and checks the model.
-- [ ] ISC-27: Every gesture in README's gesture table has a passing ERT case.
+- [x] ISC-27: Every gesture in README's gesture table has a passing ERT case.
   The table follows el-easydraw's conventions: arrows nudge 1 px and S-arrows
   10 px, `C-mouse-1` toggles selection, `S-drag` constrains to 45 deg steps or
   squares, `M-drag` duplicates, middle-drag pans, `C-wheel` zooms. Probe: ERT
@@ -241,15 +241,15 @@ the document shows the result the moment you finish.
 Why: the whole point is surviving a locked-down machine and staying
 maintainable.
 
-- [ ] ISC-21: All runtime files byte-compile with zero warnings. Probe:
+- [x] ISC-21: All runtime files byte-compile with zero warnings. Probe:
   `make compile` with `byte-compile-error-on-warn`.
-- [ ] ISC-22: README.org lists every dependency (runtime and build), every
+- [x] ISC-22: README.org lists every dependency (runtime and build), every
   keybinding of both editors, the measured limits and the font licence.
   Probe: Read README; ERT checks each command key appears.
-- [ ] ISC-A1: Anti: Runtime elisp calls no process, network or server function
+- [x] ISC-A1: Anti: Runtime elisp calls no process, network or server function
   and nothing newer than Emacs 27.1. Probe: `make audit` with planted
   positives, and `make test-emacs27` (build and suite on Emacs 27.1).
-- [ ] ISC-A2: Anti: Opening, viewing, rendering, exporting or browsing a
+- [x] ISC-A2: Anti: Opening, viewing, rendering, exporting or browsing a
   drawing never modifies the drawing file. Probe: ERT hashes fixtures before
   and after each of those commands.
 - [x] ISC-A3: Anti: A save never drops an element or a field that was in the
@@ -260,16 +260,6 @@ maintainable.
   perfect-freehand) keep their MIT notices. The browser page bundles
   Excalidraw 0.18.1 unmodified, with its MIT notice in the page. Probe: grep
   for the notices in the ported files and in assets/esketch-page.html.
-
-## Not yet specified
-
-- fog: Freehand drawing in the native Emacs editor -- whether mouse-movement
-  event rate under `track-mouse` is enough for a usable pen.
-- fog: Emacs Lisp package layout and file split; decided at the first build
-  slice, as in ewavedrom and evaporview.
-- fog: Whether a drawing can also live inside the Org file itself, as
-  el-easydraw's base64 data links do. Excalidraw JSON is much larger than a
-  compact SVG, so this may cost more readability than it saves in files.
 
 ## Decisions
 
@@ -338,6 +328,20 @@ maintainable.
 - 2026-10-16 Without SVG display (emacs -nw, or a build without librsvg) the
   drawing shows as a one-line note and `b` still opens the browser editor,
   instead of failing in create-image.
+- 2026-10-16 Fog closed: freehand drawing stays in the browser editor, which
+  is Excalidraw's own pen; the Emacs editor draws shapes, arrows and text.
+- 2026-10-16 Fog closed: package layout is esketch-json (format),
+  esketch-model (edits), esketch-rough / esketch-freehand / esketch-fonts
+  (drawing primitives), esketch-render (SVG), esketch (editor) and
+  esketch-org (Org).
+- 2026-10-16 Fog closed: drawings live in their own .excalidraw files, never
+  inside the Org text; Excalidraw JSON is too large to embed readably, and a
+  separate file keeps it openable on excalidraw.com and diffable.
+- 2026-10-16 F3 beyond the minimal editor was built by a delegated agent
+  (multi-selection, resize, mouse-drawn arrows and text, Tab selection,
+  context menus, gestures, bench) and rechecked here: suite, Emacs 27.1,
+  three planted bugs, rendered selection viewed. Text resizes by font size;
+  `0` resets a panned or zoomed view; moves apply on release, no live drag.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
@@ -386,6 +390,17 @@ maintainable.
 - ISC-20: ERT export-svg and Org HTML export tests.
 - ISC-2: verify-compat ok for 9 elements; broken binding planted and caught;
   esketch-made render 9/9 paths equal to Excalidraw's.
+- ISC-8, ISC-11, ISC-26, ISC-27: test/esketch-gesture-test.el (52 tests
+  with the editor suite); planted zoom, follower and constrain bugs each
+  fail it; README gesture table checked row by row by a test.
+- ISC-10, ISC-10.1: `make bench`; graphic drag step 16 ms at 10, 122 ms at
+  100, 379 ms at 500 elements; README Limits names 100 elements.
+- ISC-21, ISC-A1: `make all` (zero warnings, audit with planted cases) and
+  `make test-emacs27` 243 passed, 2 skipped for no SVG in that image.
+- ISC-22: README dependencies with pinned versions and proven-on list, key
+  and gesture tables, Limits, licences; read.
+- ISC-A2: test/esketch-integrity-test.el checks content and modification
+  time; a planted save in esketch-browse fails it.
 - ISC-A4: MIT notices for roughjs and perfect-freehand in the ported files
   (grep); no Excalidraw application code in the package.
 - ISC-5.2: `make test-render-corpus` 44 files, 3513 paths, 0 differ; a

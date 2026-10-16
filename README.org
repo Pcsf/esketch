@@ -1,12 +1,10 @@
 #+TITLE: esketch -- Excalidraw-style diagrams from Emacs
 
-Status: in progress.  Drawings open, render exactly as in Excalidraw, show
-inline in Org and take small edits in Emacs; =b= opens them in a full
-Excalidraw that runs offline in the browser, and its Send to Emacs button
-brings them back.  The ideal state, the claims that define done and
-how each one is tested are in [[file:ISA.md][ISA.md]].
+Status: version 0.1.0.  Every claim in [[file:ISA.md][ISA.md]] -- the ideal
+state, what defines done and how each part is tested -- holds, with the
+evidence recorded there.  Known gaps are under Limits.
 
-* What it will be
+* What it is
 
 Open, edit and save Excalidraw (=.excalidraw=) drawings inside Emacs, with
 a self-contained offline HTML page for mouse-heavy sketching.  Files stay in
@@ -16,7 +14,7 @@ esketch without loss and diffs in git like any text.
 It is built for locked-down corporate machines: nothing to install beyond
 the package, no network, no local server, no browser extension.
 
-* What works now
+* What is in it
 
 - =esketch-json.el= reads JSON and writes it exactly as Excalidraw's
   =JSON.stringify(data, null, 2)= does.  An unmodified drawing saves byte
@@ -49,6 +47,9 @@ the package, no network, no local server, no browser extension.
   =C-c C-c= saves and =C-c C-k= discards.  Org HTML export embeds the
   drawing as SVG.
 
+In the browser every key, menu and tool is Excalidraw's own (=?= there lists
+them); the page adds only the Send to Emacs button.
+
 The browser editor is Excalidraw 0.18.1 itself, with its fonts, in one
 self-contained page (=assets/esketch-page.html=) opened from =file://= --
 nothing is installed and nothing goes over the network.  Its *Send to
@@ -58,40 +59,89 @@ shows it, or writes it to the drawing file if the editor was closed.
 
 Keys over a drawing being edited:
 
-| Key                   | Does                                                  |
-|-----------------------+-------------------------------------------------------|
-| =mouse-1=             | select (a label selects its shape)                    |
-| drag                  | move the selection; bound arrows follow               |
-| arrows, =S-=arrows    | nudge 1 px, 10 px                                     |
-| =r= =o= =d=           | add a rectangle, ellipse, diamond at the last click   |
-| =c=                   | arrow from the previous selection to this one         |
-| =RET=, double-click   | set the label of a shape, or edit a text              |
-| =DEL=                 | delete                                                |
-| =u= =U=               | undo, redo                                            |
-| =b=                   | open in the browser editor (Excalidraw, offline)      |
-| =i=                   | bring the drawing back from the browser now           |
+| Key                 | Does                                                         |
+|---------------------+--------------------------------------------------------------|
+| =mouse-1=           | select (a label selects its shape); see the gestures below   |
+| arrows, =S-=arrows  | nudge the selection 1 px, 10 px                              |
+| =TAB=, =S-TAB=      | select the next, previous element in drawing order, wrapping |
+| =r= =o= =d=         | add a rectangle, ellipse, diamond at the last click          |
+| =a=                 | arrow tool: the next drag draws an arrow                     |
+| =t=                 | text tool: the next click asks for a text and places it      |
+| =c=                 | arrow from the previous selection to this one                |
+| =D=                 | duplicate the selection, 20 px down and right                |
+| =RET=, double-click | set the label of a shape, or edit a text                     |
+| =DEL=               | delete the selection                                         |
+| =u= =U=             | undo, redo                                                   |
+| =0=                 | show the whole drawing at the default scale again            |
+| =b=                 | open in the browser editor (Excalidraw, offline)             |
+| =i=                 | bring the drawing back from the browser now                  |
+
+Mouse gestures.  Each row is run by the ERT test named next to it, and
+a test fails if a row has none:
+
+| Gesture              | Does                                                       | Test                                              |
+|----------------------+------------------------------------------------------------+---------------------------------------------------|
+| =mouse-1=            | select one element, replacing the selection                | =esketch-gesture-test-click-selects-one=          |
+| =C-mouse-1=          | add the element to the selection, or remove it             | =esketch-gesture-test-ctrl-click-toggles=         |
+| drag                 | move every selected element; bound arrows follow           | =esketch-gesture-test-drag-moves-every-selected=  |
+| =S-=drag             | move along a horizontal, vertical or 45 degree line        | =esketch-gesture-test-shift-drag-constrains-move= |
+| =M-=drag             | copy the selection and move the copy                       | =esketch-gesture-test-meta-drag-duplicates=       |
+| drag handle          | resize a rectangle, ellipse, diamond or text (min 10 x 10) | =esketch-gesture-test-resize-by-handle=           |
+| =S-=drag handle      | resize keeping the proportions (a square stays square)     | =esketch-gesture-test-resize-keeps-ratio=         |
+| =a=, drag            | draw an arrow; an end inside a shape binds to it           | =esketch-gesture-test-draw-arrow-between-shapes=  |
+| =t=, click           | ask for a text and place it at the click                   | =esketch-gesture-test-text-tool-places-text=      |
+| =mouse-3= on element | menu: stroke, background, width, roughness, font size      | =esketch-gesture-test-menu-on-shape=              |
+| =mouse-3= on canvas  | menu: add a rectangle, ellipse, diamond or text there      | =esketch-gesture-test-menu-on-canvas=             |
+| =mouse-2= drag       | pan the view                                               | =esketch-gesture-test-middle-drag-pans=           |
+| =C-wheel=            | zoom 1.25x per step, 0.25x to 4x, about the pointer        | =esketch-gesture-test-ctrl-wheel-zooms=           |
+
+A press on a member of a selection keeps the selection for a drag; a
+click without a drag narrows it to that element.  =C-wheel= is
+=C-<wheel-up>= and =C-<wheel-down>=, or =C-<mouse-4>= and =C-<mouse-5>=.
+A moved arrow whose ends are both on moved shapes goes with them and
+stays bound; an arrow bound to a shape that stays is detached.  Every
+change is one undo step.
 
 * Dependencies
 
 Runtime:
 - Emacs 27.1 or later with SVG image support; check with
   =(image-type-available-p 'svg)=, which must return =t=.
-- Any modern browser, for the optional HTML editor.
+- Any modern browser (Chromium-based or Firefox), for the optional browser
+  editor.  It opens a local file and needs no network, extension or server.
+
+Nothing else: no Node, Python, external program, font install or
+listening port.  The fonts ship as glyph outlines (=esketch-fonts.el=) for
+Emacs and inside the page for the browser.
 
 Build and test, at home only, never needed on the target machine:
 - GNU make.
 - bun, to regenerate =test/json-cases.json= (=bun tools/gen-cases.ts=) and
   for =make test-corpus=.
 - gh, authenticated, for =make corpus= and =make fonts=.
-- Chromium, for =make ref-basic= and =make test-render-corpus=, which run
-  real Excalidraw (=@excalidraw/utils= 0.1.5, installed with =bun install=
-  in =tools/=) as the reference.
+- Chromium, for =make ref-basic=, =make test-render-corpus= and =make
+  verify-page=, which run real Excalidraw as the reference and drive the
+  page.
+- Firefox, for =make verify-firefox=.
+- Docker (rootless is fine; set =DOCKER_HOST=), for =make test-emacs27=,
+  which uses the =silex/emacs:27.1= image.
+- The JavaScript packages, pinned in =tools/package.json= and installed with
+  =bun install= in =tools/=: =@excalidraw/excalidraw= 0.18.1 with =react=
+  and =react-dom= 19.1.0 (the page), =@excalidraw/utils= 0.1.5 (reference
+  renders), =roughjs= 4.6.4 and =perfect-freehand= 1.2.0 (oracles for the
+  Lisp ports), =wawoff2= 2.0.1 and =opentype.js= 1.3.4 (font outlines).
+
+Proven on (2026-10-16): GNU Emacs 31.1 and 27.1 (=silex/emacs:27.1=),
+librsvg 2.62.3, Chromium 152.0.7977.82, Firefox 155.0.1, bun 1.4.0, GNU
+Make 4.4.1, gh 2.101.0, Docker 29.7.2, Excalidraw source at commit
+4c37956b for the rendering rules.
 
 * Building and testing
 
 | Command            | What it does                                                   |
 |--------------------+----------------------------------------------------------------|
 | =make=             | byte-compile (warnings are errors), ERT, SVG vs reference, audit |
+| =make bench=       | time one drag step at 10, 100 and 500 elements (see Limits)    |
 | =make corpus=      | fetch the public =.excalidraw= files in =test/corpus.txt=      |
 | =make test-corpus= | save each corpus file unmodified and compare with what         |
 |                    | JavaScript writes; then edit each at random and check links    |
@@ -104,6 +154,39 @@ Build and test, at home only, never needed on the target machine:
 The corpus is third-party data, so only its list (repository, path, blob
 sha) is committed; the files go to =build/corpus=.  The audit fails if
 runtime code calls a process or network function or needs Emacs 28.
+
+* Limits
+
+The editor redraws the whole drawing as SVG after every change, so the
+time of a move grows with the number of elements.  =make bench= builds
+drawings of 10, 100 and 500 elements (shapes, their labels and arrows
+between them) and times 30 drag steps on each: =esketch-move= on a
+labelled shape with arrows, the view fitted, the SVG rendered with the
+selection layer, and =create-image=.  A move is applied once, when the
+mouse button is released, and a nudge costs one step per key press.
+
+| Elements | Batch median (ms) | Batch max (ms) | Graphic Emacs median (ms) | Graphic Emacs max (ms) |
+|----------+-------------------+----------------+---------------------------+------------------------|
+|       10 |               2.4 |            8.7 |                      16.5 |                   17.9 |
+|      100 |              35.5 |           37.7 |                     122.2 |                  144.3 |
+|      500 |             168.1 |          183.1 |                     378.8 |                  474.9 |
+
+The batch columns are what =make bench= prints; a batch Emacs cannot
+rasterise the SVG, so they leave that out.  The graphic columns come
+from the same file run in a graphic Emacs (pgtk, with librsvg), where the
+step also includes =image-size=, which forces the rasterisation that
+redisplay does; the command is in the header of =test/esketch-bench.el=.
+Measured with Emacs 31.1 on one machine: expect other hardware to scale
+all figures, and repeated runs to differ by about 20 percent (two earlier
+graphic runs gave 70 ms at 50 elements, 104 ms at 100 and 306 ms at 500).
+
+A drag step takes more than 100 ms from about 100 elements in a graphic
+Emacs.  Up to about 50 elements the editor follows the hand comfortably
+(70 ms at 50); above 100 elements use the browser editor (=b=), which draws
+on a canvas.  The step is over 100 ms in
+batch only at 500 elements, but the graphic figure is the one a user
+sees.  Rotated shapes are drawn rotated, but their selection box, handle
+and resize ignore the rotation.
 
 * Licence
 

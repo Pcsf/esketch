@@ -351,6 +351,105 @@ A shape takes its bound text with it; arrows bound to it come loose."
                   (esketch-put other (esketch--binding-key end) :null)))
               (esketch--touch other))))))))
 
+;;;; Several elements at once
+
+(defun esketch-roots (doc ids)
+  "Live ids of IDS, once each; text bound in a shape stands for the shape."
+  (let ((out nil))
+    (dolist (id ids)
+      (let ((el (esketch--live-element doc id)))
+        (when el
+          (let* ((cid (esketch-get el "containerId"))
+                 (root (if (and (stringp cid) (esketch--live-element doc cid)) cid id)))
+            (unless (member root out) (push root out))))))
+    (nreverse out)))
+
+(defun esketch-move-many (doc ids dx dy)
+  "Move every element of IDS by DX, DY, each attached thing exactly once.
+An arrow whose bound ends all belong to moved shapes follows them and
+stays bound; its free end moves with it.  An arrow bound to a shape
+that stays is detached, as `esketch-move' does."
+  (let* ((roots (esketch-roots doc ids))
+         (arrows (cl-remove-if-not
+                  (lambda (id) (esketch--linear-p (esketch-element doc id))) roots))
+         (following
+          (cl-remove-if-not
+           (lambda (id)
+             (let ((a (esketch-element doc id)))
+               (and (cl-some (lambda (e) (esketch--bound-to a e)) '(start end))
+                    (cl-every (lambda (e) (let ((tid (esketch--bound-to a e)))
+                                            (or (null tid) (member tid roots))))
+                              '(start end)))))
+           arrows)))
+    (dolist (id arrows)
+      (unless (member id following) (esketch-move doc id dx dy)))
+    (dolist (id roots)
+      (unless (member id arrows) (esketch-move doc id dx dy)))
+    (dolist (id following)
+      (let ((a (esketch-element doc id)))
+        (dolist (e '(start end))
+          (unless (esketch--bound-to a e)
+            (esketch--shift-end a e dx dy)))
+        (esketch--touch a)))))
+
+(defun esketch-duplicate (doc ids)
+  "Append copies of IDS, with their bound text, on top of DOC.
+Return the ids of the copies of IDS, in order.  Links between copied
+elements are remapped to the copies; links to elements not copied are
+dropped."
+  (let* ((roots (esketch-roots doc ids))
+         (all (apply #'append
+                     (mapcar (lambda (id)
+                               (cons id
+                                     (unless (esketch--linear-p (esketch-element doc id))
+                                       (delq nil
+                                             (mapcar (lambda (b)
+                                                       (and (equal (esketch-get b "type") "text")
+                                                            (esketch--live-element doc (esketch-get b "id"))
+                                                            (esketch-get b "id")))
+                                                     (esketch--bound-list (esketch-element doc id)))))))
+                             roots)))
+         (map nil) (groups nil) (copies nil))
+    (dolist (id all)
+      (let ((new (copy-tree (esketch-element doc id) t))
+            (nid (esketch-new-id)))
+        (push (cons id nid) map)
+        (esketch-put new "id" nid)
+        (esketch-put new "seed" (1+ (random 2147483646)))
+        (esketch-put new "version" 0)
+        (esketch--touch new)
+        (esketch-del new "boundElementIds")
+        (esketch-put new "boundElements" :null)
+        (esketch-put new "groupIds"
+                     (vconcat (mapcar (lambda (g)
+                                        (or (cdr (assoc g groups))
+                                            (cdr (car (push (cons g (esketch-new-id)) groups)))))
+                                      (esketch-get new "groupIds"))))
+        (push (cons nid new) copies)))
+    (setq copies (nreverse copies))
+    (dolist (c copies)
+      (let ((new (cdr c)) (cid (esketch-get (cdr c) "containerId")))
+        (when (stringp cid)
+          (let ((mapped (cdr (assoc cid map))))
+            (esketch-put new "containerId" (or mapped :null))))
+        (dolist (e '(start end))
+          (let ((tid (esketch--bound-to new e)))
+            (when tid
+              (let ((mapped (cdr (assoc tid map))))
+                (if mapped
+                    (esketch-put (esketch-get new (esketch--binding-key e)) "elementId" mapped)
+                  (esketch-put new (esketch--binding-key e) :null))))))))
+    (dolist (c copies) (esketch-add doc (cdr c)))
+    (dolist (c copies)
+      (let ((new (cdr c)))
+        (when (stringp (esketch-get new "containerId"))
+          (esketch--bound-add (esketch-element doc (esketch-get new "containerId"))
+                              (car c) "text"))
+        (dolist (e '(start end))
+          (let ((tid (esketch--bound-to new e)))
+            (when tid (esketch--bound-add (esketch-element doc tid) (car c) "arrow"))))))
+    (mapcar (lambda (id) (cdr (assoc id map))) roots)))
+
 ;;;; Consistency
 
 ;; A link has a forward side (an arrow's binding, a text's containerId) and a
