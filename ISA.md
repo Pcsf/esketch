@@ -348,6 +348,10 @@ maintainable.
   context menus, gestures, bench) and rechecked here: suite, Emacs 27.1,
   three planted bugs, rendered selection viewed. Text resizes by font size;
   `0` resets a panned or zoomed view; moves apply on release, no live drag.
+- 2026-10-16 The repo went public. The browser page is built (`make page`)
+  rather than stored: it is a third-party bundle, and a base64 blob inside
+  Excalidraw's WebAssembly matches an AWS-key signature that public-repo
+  secret scans flag. Without the page, `b` says how to build it.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
