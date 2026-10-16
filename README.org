@@ -1,0 +1,24 @@
+#+TITLE: esketch -- Excalidraw-style diagrams from Emacs
+
+Status: scoped, not built.  The ideal state, the claims that define done
+and how each one is tested are in [[file:ISA.md][ISA.md]].
+
+* What it will be
+
+Open, edit and save Excalidraw (=.excalidraw=) drawings inside Emacs, with
+a self-contained offline HTML page for mouse-heavy sketching.  Files stay in
+Excalidraw's own JSON format, so a drawing moves between excalidraw.com and
+esketch without loss and diffs in git like any text.
+
+It is built for locked-down corporate machines: nothing to install beyond
+the package, no network, no local server, no browser extension.
+
+* Dependencies
+
+Runtime:
+- Emacs 27.1 or later with SVG image support; check with
+  =(image-type-available-p 'svg)=, which must return =t=.
+- Any modern browser, for the optional HTML editor.
+
+Build and test, at home only, never needed on the target machine:
+- GNU make, bun, headless Chromium and Firefox.
