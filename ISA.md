@@ -243,9 +243,6 @@ maintainable.
 
 - fog: Freehand drawing in the native Emacs editor -- whether mouse-movement
   event rate under `track-mouse` is enough for a usable pen.
-- fog: How faithfully to match Excalidraw's own rough output. Same algorithm
-  and seed gives "the same style"; byte-identical to excalidraw.com would need
-  their exact rough.js version and options, which may not be worth it.
 - fog: Emacs Lisp package layout and file split; decided at the first build
   slice, as in ewavedrom and evaporview.
 - fog: Whether a drawing can also live inside the Org file itself, as
@@ -296,6 +293,8 @@ maintainable.
   oracle tables from the real libraries, then rechecked here.
 - 2026-10-16 Load-time defaults (Excalidraw's restore) are applied to a copy
   for drawing only; the saved file keeps what the user had.
+- 2026-10-16 Fog "how faithfully to match Excalidraw's rough output" closed:
+  ISC-5 and ISC-5.2 settled it at path-for-path identity with real Excalidraw.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
