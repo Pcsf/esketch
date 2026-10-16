@@ -42,8 +42,17 @@
 (require 'esketch-freehand)
 (require 'esketch-fonts)
 
-(defvar esketch-render-style 'hand
-  "`hand' for Excalidraw's sketchy look, `plain' for straight lines.")
+(defgroup esketch nil
+  "Excalidraw-style diagrams."
+  :group 'multimedia)
+
+(defcustom esketch-render-style 'hand
+  "How drawings look in Emacs: `hand', Excalidraw's sketchy strokes as
+each element asks for, or `plain', every element with clean lines (its
+roughness taken as 0, Excalidraw's \"architect\").  Only the display
+changes; files keep what they say.  `esketch-toggle-style' switches it."
+  :type '(choice (const :tag "Sketchy, as drawn" hand)
+                 (const :tag "Clean lines" plain)))
 
 (defconst esketch-render--decimals 2
   "Excalidraw's MAX_DECIMALS_FOR_SVG_EXPORT.")
@@ -586,8 +595,16 @@ FONT lacks a character."
               (setq best (max best w))))
           (/ (* best size) (float (nth 2 font))))))))
 
+(defcustom esketch-render-plain-font t
+  "Non-nil: in `plain' style, text is drawn in a plain sans-serif font
+(Helvetica or the system's sans-serif) instead of its hand-drawn one."
+  :type 'boolean)
+
 (defun esketch-render--text-svg (el)
-  (let* ((font (assq (esketch-get el "fontFamily") esketch-fonts))
+  (let* ((family (if (and (eq esketch-render-style 'plain) esketch-render-plain-font)
+                     2
+                   (esketch-get el "fontFamily")))
+         (font (assq family esketch-fonts))
          (lines (split-string (replace-regexp-in-string
                                "\r\n?" "\n" (esketch-get el "text"))
                               "\n"))
@@ -598,8 +615,7 @@ FONT lacks a character."
               ("center" (/ (esketch-get el "width") 2.0))
               ("right" (esketch-get el "width"))
               (_ 0)))
-         (voff (esketch-render--vertical-offset (esketch-get el "fontFamily")
-                                                size line-px))
+         (voff (esketch-render--vertical-offset family size line-px))
          (anchor (pcase align ("center" "middle") ("right" "end") (_ "start")))
          (i -1))
     (mapconcat
@@ -612,8 +628,7 @@ FONT lacks a character."
         (format "<text%s>%s</text>"
                (esketch-render--attrs
                 "x" x "y" (+ (* i line-px) voff)
-                "font-family" (esketch-render--font-family
-                               (esketch-get el "fontFamily"))
+                "font-family" (esketch-render--font-family family)
                 "font-size" (concat (esketch-render--num size) "px")
                 "fill" (esketch-get el "strokeColor")
                 "text-anchor" anchor "style" "white-space: pre;"

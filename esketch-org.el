@@ -53,6 +53,7 @@
     (define-key m [mouse-1] #'esketch-org-edit-at-mouse)
     (define-key m (kbd "RET") #'esketch-org-edit)
     (define-key m "b" #'esketch-org-browse)
+    (define-key m "s" #'esketch-toggle-style)
     m)
   "Keys over a drawing shown in an Org buffer.")
 
@@ -205,6 +206,7 @@ drawing and C-c C-k throws the change away, and both end the mode."
         (esketch-org-refresh)))))
 
 (add-hook 'esketch-after-external-save-hook #'esketch-org--refresh-all)
+(add-hook 'esketch-style-changed-hook (lambda () (esketch-org--refresh-all nil)))
 
 (org-link-set-parameters "esketch" :follow #'esketch-org--follow
                          :export #'esketch-org--export)

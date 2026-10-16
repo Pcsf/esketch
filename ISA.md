@@ -1,6 +1,6 @@
 ---
 phase: complete
-progress: 37/37
+progress: 38/38
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -144,6 +144,12 @@ alike.
 Why: small edits should not need a browser, and the drawing should live in the
 buffer the user is already in.
 
+- [x] ISC-28: A user option and `s` switch every drawing shown between
+  Excalidraw's sketchy look and clean lines with a plain font, without
+  changing any file; clean lines are exactly what the drawing draws with
+  every roughness 0. Probe: test/esketch-style-test.el; the clean render of
+  basic.excalidraw equals real Excalidraw's at roughness 0 (12/12 paths);
+  both styles viewed.
 - [x] ISC-8: In a GUI frame the user can create rectangle, ellipse, diamond,
   arrow and text, select by click, move by drag, resize, retitle, delete, and
   undo/redo every one of those. Probe: ERT drives the commands with synthetic
@@ -444,6 +450,7 @@ real DOM events at home.
 | ISC-7 | visual | side-by-side screenshots | recognised as Excalidraw style | viewed | F2 |
 | ISC-8 | behaviour | synthetic mouse edits and undo | model correct each step | ERT | F3 |
 | ISC-8.1 | behaviour | select, drag, nudge, add, label, delete, undo/redo | model correct each step | ERT | F3 |
+| ISC-28 | equivalence | clean style vs every roughness 0; toggle redraws, file unchanged | equal SVG, sha unchanged | ERT | F3 |
 | ISC-9 | behaviour | arrow follows dragged shape | stays bound | ERT + screenshot | F3 |
 | ISC-10 | bench | drag latency at 10/100/500 elements | figures in README | make bench | F3 |
 | ISC-10.1 | doc | recommended page threshold | stated, derived from ISC-10 | Read | F3 |

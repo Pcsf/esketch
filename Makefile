@@ -19,7 +19,7 @@ compile:
 test: test-el test-render
 
 test-el: compile
-	$(BATCH) -L test -l test/esketch-test.el -l test/esketch-rough-test.el -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el -l test/esketch-gesture-test.el -l test/esketch-integrity-test.el -l test/esketch-keys-test.el -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit
+	$(BATCH) -L test -l test/esketch-test.el -l test/esketch-rough-test.el -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el -l test/esketch-gesture-test.el -l test/esketch-integrity-test.el -l test/esketch-keys-test.el -l test/esketch-style-test.el -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit
 
 # Drag latency at 10, 100 and 500 elements (ESKETCH_BENCH_SIZES="10 100" to
 # change the sizes).
@@ -141,4 +141,4 @@ test-emacs27:
 	  emacs -Q --batch -L . --eval "(setq byte-compile-error-on-warn t)" -f batch-byte-compile $(EL) && \
 	  emacs -Q --batch -L . -L test -l test/esketch-test.el -l test/esketch-rough-test.el \
 	    -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el \
-	    -l test/esketch-gesture-test.el -l test/esketch-integrity-test.el -l test/esketch-keys-test.el -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit'
+	    -l test/esketch-gesture-test.el -l test/esketch-integrity-test.el -l test/esketch-keys-test.el -l test/esketch-style-test.el -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit'

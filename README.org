@@ -136,6 +136,16 @@ librsvg 2.62.3, Chromium 152.0.7977.82, Firefox 155.0.1, bun 1.4.0, GNU
 Make 4.4.1, gh 2.101.0, Docker 29.7.2, Excalidraw source at commit
 4c37956b for the rendering rules.
 
+* Styles
+
+Drawings look as Excalidraw draws them: sketchy strokes and the hand-drawn
+font.  =s= (=M-x esketch-toggle-style=) switches every drawing shown to clean
+lines and a plain sans-serif font, and back; the files are not changed.  To
+start clean, customize =esketch-render-style= to =plain=; set
+=esketch-render-plain-font= to nil to keep the hand-drawn font with clean
+lines.  To store clean lines in a drawing itself, so they show everywhere,
+set each element's roughness to 0 (mouse-3) or pick Architect in the browser.
+
 * Building and testing
 
 | Command            | What it does                                                   |

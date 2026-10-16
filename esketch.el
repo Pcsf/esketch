@@ -787,6 +787,21 @@ at the last click.  TEXT is the text to add, asked for when nil."
     (let ((choice (x-popup-menu event (esketch-menu-spec ed id))))
       (when choice (esketch-menu-apply ed choice)))))
 
+(defvar esketch-style-changed-hook nil
+  "Run after `esketch-toggle-style' changes how drawings look.")
+
+(defun esketch-toggle-style ()
+  "Switch every drawing shown between sketchy and clean lines.
+The files are not changed; customize `esketch-render-style' to keep it."
+  (interactive)
+  (setq esketch-render-style (if (eq esketch-render-style 'plain) 'hand 'plain))
+  (dolist (b (buffer-list))
+    (with-current-buffer b
+      (when (and esketch--ed (overlay-buffer (esketch-ed-overlay esketch--ed)))
+        (esketch--redisplay esketch--ed))))
+  (run-hooks 'esketch-style-changed-hook)
+  (message "esketch: %s lines" (if (eq esketch-render-style 'plain) "clean" "sketchy")))
+
 ;;;; Saving and export
 
 (defun esketch-save ()
@@ -985,6 +1000,7 @@ Uses the clipboard when it holds a drawing, else the newest save in
     (define-key m "d" #'esketch-add-diamond)
     (define-key m "c" #'esketch-connect)
     (define-key m "b" #'esketch-browse)
+    (define-key m "s" #'esketch-toggle-style)
     (define-key m "i" #'esketch-import)
     (define-key m "u" #'esketch-undo)
     (define-key m (kbd "C-/") #'esketch-undo)
