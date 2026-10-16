@@ -1,6 +1,6 @@
 ---
 phase: climbing
-progress: 9/36
+progress: 10/36
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -235,7 +235,7 @@ maintainable.
 - [x] ISC-A3: Anti: A save never drops an element or a field that was in the
   file when it was opened. Probe: covered by the ISC-1 round-trip plus an ERT
   case with unknown future fields.
-- [ ] ISC-A4: Anti: No Excalidraw application source is vendored into the
+- [x] ISC-A4: Anti: No Excalidraw application source is vendored into the
   package; any ported algorithm (rough.js) carries its MIT notice. Probe:
   `grep` for the notice in the ported file; licence section of README read.
 
@@ -318,6 +318,8 @@ maintainable.
   bugs fail it.
 - ISC-5.1: ERT freehand suite, max deviation 1.1e-13, 35 d strings exact;
   four planted bugs fail it.
+- ISC-A4: MIT notices for roughjs and perfect-freehand in the ported files
+  (grep); no Excalidraw application code in the package.
 - ISC-5.2: `make test-render-corpus` 44 files, 3513 paths, 0 differ; a
   planted 0.3 px change is caught.
 - ISC-1, ISC-1.1: `make test-corpus` 44/44 match JSON.stringify, 43
