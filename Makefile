@@ -6,7 +6,7 @@
 EMACS ?= emacs
 BUN   ?= bun
 BATCH  = $(EMACS) -Q --batch -L .
-EL     = esketch-json.el esketch-model.el esketch-rough.el esketch-freehand.el esketch-fonts.el esketch-render.el
+EL     = esketch-json.el esketch-model.el esketch-rough.el esketch-freehand.el esketch-fonts.el esketch-render.el esketch.el esketch-org.el
 BUILD  = build
 
 .PHONY: all compile test test-el test-render ref-basic test-render-corpus audit corpus test-corpus fonts clean
@@ -19,7 +19,7 @@ compile:
 test: test-el test-render
 
 test-el: compile
-	$(BATCH) -L test -l test/esketch-test.el -l test/esketch-rough-test.el -l test/esketch-freehand-test.el -l test/esketch-render-test.el -f ert-run-tests-batch-and-exit
+	$(BATCH) -L test -l test/esketch-test.el -l test/esketch-rough-test.el -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el -f ert-run-tests-batch-and-exit
 
 # Runtime files must not reach outside Emacs, nor use functions newer than
 # Emacs 27.1.  Each scan also runs against a planted file and must hit it,
@@ -33,7 +33,7 @@ audit: | $(BUILD)
 	@test "$$(grep -cE '\($(EMACS28_FNS)' $(BUILD)/planted.txt)" = 1 || { echo "audit: version pattern is broken"; exit 1; }
 	@if grep -nE '$(FORBIDDEN_CALLS)' $(EL); then echo "audit: runtime reaches outside Emacs"; exit 1; fi
 	@if grep -nE '\($(EMACS28_FNS)' $(EL); then echo "audit: runtime needs Emacs 28+"; exit 1; fi
-	@if grep -nE "^\(require '" $(EL) | grep -vE "'(cl-lib|subr-x|esketch-json|esketch-model|esketch-rough|esketch-freehand|esketch-fonts|esketch-render|browse-url)\)"; then \
+	@if grep -nE "^\(require '" $(EL) | grep -vE "'(cl-lib|subr-x|org|ol|esketch|esketch-json|esketch-model|esketch-rough|esketch-freehand|esketch-fonts|esketch-render|esketch-org|browse-url)\)"; then \
 	  echo "audit: unexpected require"; exit 1; fi
 	@echo "audit: planted cases caught, runtime clean"
 

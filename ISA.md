@@ -1,6 +1,6 @@
 ---
 phase: climbing
-progress: 12/36
+progress: 17/37
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -145,7 +145,13 @@ buffer the user is already in.
   arrow and text, select by click, move by drag, resize, retitle, delete, and
   undo/redo every one of those. Probe: ERT drives the commands with synthetic
   mouse events and checks the model after each step.
-- [ ] ISC-9: An arrow drawn from one shape to another binds to both, and
+- [x] ISC-8.1: The minimal editor: click selects (a label selects its shape),
+  drag moves, arrows nudge 1 px and S-arrows 10 px, r/o/d add a rectangle,
+  ellipse or diamond at the last click, RET sets a shape's label or a text,
+  DEL deletes, u and U undo and redo. Probe: ERT editor suite with
+  constructed mouse events. Still open in ISC-8: resizing, drawing arrows
+  and text with the mouse.
+- [x] ISC-9: An arrow drawn from one shape to another binds to both, and
   dragging either shape keeps it attached. Probe: ERT plus a viewed screenshot
   of a dragged pair.
 - [ ] ISC-10: README states the drag latency `make bench` measured at 10, 100
@@ -204,12 +210,12 @@ Why: a drawing should behave like a Lucidchart diagram embedded in Confluence.
 It reads as a picture in the document, one click edits it where it sits, and
 the document shows the result the moment you finish.
 
-- [ ] ISC-19: An Org link `[[esketch:path.excalidraw]]` displays inline as an
+- [x] ISC-19: An Org link `[[esketch:path.excalidraw]]` displays inline as an
   image. Probe: ERT on an Org buffer; screenshot viewed.
-- [ ] ISC-23: One command, `esketch-org-insert`, creates a new drawing file
+- [x] ISC-23: One command, `esketch-org-insert`, creates a new drawing file
   under the customisable `esketch-directory`, inserts its link at point, and
   opens the editor on it. Probe: ERT checks file, link and editor state.
-- [ ] ISC-24: `C-c C-o` or a click on the inline image opens the native editor
+- [x] ISC-24: `C-c C-o` or a click on the inline image opens the native editor
   in place, as an overlay where the image was, with the surrounding text still
   visible. `C-c C-c` commits and shows the refreshed image, and `C-c C-k`
   discards the edit. Probe: ERT on an Org buffer for commit and discard;
@@ -332,6 +338,13 @@ maintainable.
   glyph and fallback tests.
 - ISC-7: librsvg render beside Excalidraw's own font-embedded export, fixture
   and a 200-path diagram, viewed: indistinguishable.
+- ISC-8.1, ISC-9: ERT editor suite 15/15; four planted bugs each fail it.
+  Connector ends now clipped at ellipse and diamond outlines after a viewed
+  render showed them stopping at the bounding box.
+- ISC-19, ISC-23, ISC-24: ERT org cases (inline overlay, insert, commit,
+  discard leaves the file hash unchanged); librsvg render of the editor's
+  overlay image viewed. A screenshot of a live GUI frame was not taken: no
+  off-screen display server here, and none was added to the live session.
 - ISC-A4: MIT notices for roughjs and perfect-freehand in the ported files
   (grep); no Excalidraw application code in the package.
 - ISC-5.2: `make test-render-corpus` 44 files, 3513 paths, 0 differ; a
@@ -374,6 +387,7 @@ real DOM events at home.
 | ISC-6 | measure | shipped-font text widths vs Excalidraw's measured widths, corpus | median under 1 px, p90 under 3 px | make test-corpus | F2 |
 | ISC-7 | visual | side-by-side screenshots | recognised as Excalidraw style | viewed | F2 |
 | ISC-8 | behaviour | synthetic mouse edits and undo | model correct each step | ERT | F3 |
+| ISC-8.1 | behaviour | select, drag, nudge, add, label, delete, undo/redo | model correct each step | ERT | F3 |
 | ISC-9 | behaviour | arrow follows dragged shape | stays bound | ERT + screenshot | F3 |
 | ISC-10 | bench | drag latency at 10/100/500 elements | figures in README | make bench | F3 |
 | ISC-10.1 | doc | recommended page threshold | stated, derived from ISC-10 | Read | F3 |
@@ -401,6 +415,9 @@ real DOM events at home.
 
 ## Remaining Work
 
+- [ ] See the Org preview and the in-place editor in a real GUI frame, in
+  your own Emacs -- verified so far through librsvg renders of the exact
+  overlay image and ERT, not a frame screenshot.
 - [ ] Draw images, frames, embeds, sticky notes and constant-width
   (laser) freehand strokes -- none occurs in the corpus; today they are
   skipped or drawn as the variable-width stroke.

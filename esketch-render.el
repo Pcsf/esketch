@@ -829,8 +829,29 @@ empty text, and elements too small to see (isInvisiblySmallElement)."
           (esketch-elements doc))
     (if x1 (list x1 y1 x2 y2) (list 0 0 0 0))))
 
-(defun esketch-render-svg (doc)
-  "DOC as one standalone SVG document string."
+(defun esketch-render-bounds (doc)
+  "Absolute (X1 Y1 X2 Y2) of what DOC draws, as Excalidraw would draw it."
+  (esketch-render--doc-bounds
+   (list :obj (cons "elements"
+                    (vconcat (mapcar #'esketch-render--restore
+                                     (cl-remove-if #'esketch-render--invisible-p
+                                                   (esketch-elements doc))))))))
+
+(defun esketch-render-element-bounds (doc el)
+  "Absolute unrotated (X1 Y1 X2 Y2) of element EL of DOC."
+  (let* ((r (esketch-render--restore el))
+         (b (esketch-render--local-bounds r))
+         (o (if (equal (esketch-get r "type") "text")
+                (esketch-render--text-origin doc r)
+              (list (esketch-get r "x") (esketch-get r "y")))))
+    (list (+ (car o) (nth 0 b)) (+ (cadr o) (nth 1 b))
+          (+ (car o) (nth 2 b)) (+ (cadr o) (nth 3 b)))))
+
+(defun esketch-render-svg (doc &optional view extra)
+  "DOC as one standalone SVG document string.
+VIEW, a list (X Y W H) in drawing coordinates, fixes the visible area;
+by default it is the drawing's bounds plus padding.  EXTRA is SVG drawn
+on top, in drawing coordinates."
   (let* ((doc (list :obj
                     (cons "elements"
                           (vconcat (mapcar #'esketch-render--restore
@@ -843,9 +864,10 @@ empty text, and elements too small to see (isInvisiblySmallElement)."
                         (esketch-get app "viewBackgroundColor"))
                    "#ffffff")))
          (b (esketch-render--doc-bounds doc))
-         (w (+ (- (nth 2 b) (nth 0 b)) (* 2 pad)))
-         (h (+ (- (nth 3 b) (nth 1 b)) (* 2 pad)))
-         (dx (+ (- (nth 0 b)) pad)) (dy (+ (- (nth 1 b)) pad)))
+         (w (if view (nth 2 view) (+ (- (nth 2 b) (nth 0 b)) (* 2 pad))))
+         (h (if view (nth 3 view) (+ (- (nth 3 b) (nth 1 b)) (* 2 pad))))
+         (dx (if view (- (nth 0 view)) (+ (- (nth 0 b)) pad)))
+         (dy (if view (- (nth 1 view)) (+ (- (nth 1 b)) pad))))
     (concat
      (format "<svg%s>"
              (esketch-render--attrs
@@ -860,6 +882,10 @@ empty text, and elements too small to see (isInvisiblySmallElement)."
                       (esketch-render-element-svg doc el dx dy bg)
                     ""))
                 (esketch-elements doc) "")
+     (if extra
+         (format "<g transform=\"translate(%s %s)\">%s</g>"
+                 (esketch-render--num dx) (esketch-render--num dy) extra)
+       "")
      "</svg>")))
 
 (provide 'esketch-render)
