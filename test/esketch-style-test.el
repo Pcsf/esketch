@@ -51,7 +51,8 @@
       (should (eq (key-binding "s") 'esketch-toggle-style))
       (esketch-toggle-style)
       (should (eq esketch-render-style 'plain))
-      (should-not (equal (overlay-get (esketch-ed-overlay ed) 'display) before))
+      (when (image-type-available-p 'svg)
+        (should-not (equal (overlay-get (esketch-ed-overlay ed) 'display) before)))
       (esketch-toggle-style)
       (should (eq esketch-render-style 'hand))
       (should (equal (esketch-editor-test--sha (esketch-ed-file ed)) sha)))))
@@ -65,7 +66,9 @@
       (search-forward "esketch:")
       (should (eq (key-binding "s") 'esketch-toggle-style))
       (esketch-toggle-style)
-      (should-not (equal (overlay-get (funcall ov) 'display) before)))))
+      (should (eq esketch-render-style 'plain))
+      (when (image-type-available-p 'svg)
+        (should-not (equal (overlay-get (funcall ov) 'display) before))))))
 
 (provide 'esketch-style-test)
 ;;; esketch-style-test.el ends here
