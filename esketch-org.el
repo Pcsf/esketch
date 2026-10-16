@@ -63,8 +63,8 @@
     (overlay-put ov 'help-echo "mouse-1, C-c C-o: edit drawing")
     (overlay-put ov 'display
                  (if (file-readable-p file)
-                     (create-image (esketch-render-svg (esketch-file-doc (esketch-read-file file)))
-                                   'svg t :scale esketch-org-preview-scale)
+                     (esketch-image (esketch-render-svg (esketch-file-doc (esketch-read-file file)))
+                                    esketch-org-preview-scale (file-name-nondirectory file))
                    (format "[missing drawing %s]" file)))
     ov))
 

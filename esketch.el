@@ -98,12 +98,22 @@
                 (esketch-render--num (+ (- (nth 3 b) (nth 1 b)) (* 2 pad)))
                 esketch--selection-color)))))
 
+(defun esketch-image (svg scale &optional name)
+  "SVG as an image at SCALE, or a note when this Emacs cannot show SVG
+(a terminal, or a build without librsvg): the browser editor still works."
+  (if (and (or noninteractive (display-images-p)) (image-type-available-p 'svg))
+      (create-image svg 'svg t :scale scale)
+    (propertize (format "[drawing%s: this Emacs cannot show SVG; b edits it in the browser]"
+                        (if name (concat " " name) ""))
+                'face 'link)))
+
 (defun esketch--redisplay (ed)
   (esketch--fit-view ed)
   (overlay-put (esketch-ed-overlay ed) 'display
-               (create-image (esketch-render-svg (esketch-ed-doc ed) (esketch-ed-view ed)
-                                                 (esketch--selection-svg ed))
-                             'svg t :scale (esketch-ed-scale ed))))
+               (esketch-image (esketch-render-svg (esketch-ed-doc ed) (esketch-ed-view ed)
+                                                  (esketch--selection-svg ed))
+                              (esketch-ed-scale ed)
+                              (file-name-nondirectory (esketch-ed-file ed)))))
 
 ;;;; Coordinates and hit testing
 

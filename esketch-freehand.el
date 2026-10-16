@@ -202,8 +202,8 @@ Each has :point, :pressure, :vector, :distance and :running-length."
                                      :running-length running))
                     (push prev out))))))
         (setq out (nreverse out))
-        (setf (plist-get (car out) :vector)
-              (if (cdr out) (plist-get (cadr out) :vector) (list 0.0 0.0)))
+        (setcar out (plist-put (car out) :vector
+                               (if (cdr out) (plist-get (cadr out) :vector) (list 0.0 0.0))))
         out))))
 
 ;;;; Outline

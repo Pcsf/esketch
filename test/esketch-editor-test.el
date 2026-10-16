@@ -64,6 +64,7 @@
   (esketch-element (esketch-ed-doc ed) id))
 
 (ert-deftest esketch-editor-test-open-shows-image ()
+  (skip-unless (image-type-available-p 'svg))
   (esketch-editor-test--with-editor ed
     (should (eq (car (overlay-get (esketch-ed-overlay ed) 'display)) 'image))
     (should (eq (plist-get (cdr (overlay-get (esketch-ed-overlay ed) 'display)) :type)
@@ -216,6 +217,7 @@
                     (overlays-in (point-min) (point-max))))
 
 (ert-deftest esketch-editor-test-org-inline ()
+  (skip-unless (image-type-available-p 'svg))
   (esketch-editor-test--with-org file
     (let ((ovs (esketch-editor-test--org-overlays)))
       (should (= (length ovs) 1))
@@ -290,6 +292,13 @@
     (let ((html (org-export-as 'html nil nil t)))
       (should (string-match-p "<svg" html))
       (should-not (string-match-p (regexp-quote file) html)))))
+
+(ert-deftest esketch-editor-test-no-svg-fallback ()
+  "Without SVG support the drawing is replaced by a note pointing to the browser."
+  (cl-letf (((symbol-function 'image-type-available-p) (lambda (_) nil)))
+    (let ((d (esketch-image "<svg/>" 1 "x.excalidraw")))
+      (should (stringp d))
+      (should (string-match-p "browser" d)))))
 
 (provide 'esketch-editor-test)
 ;;; esketch-editor-test.el ends here

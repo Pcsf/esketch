@@ -247,8 +247,8 @@ maintainable.
   keybinding of both editors, the measured limits and the font licence.
   Probe: Read README; ERT checks each command key appears.
 - [ ] ISC-A1: Anti: Runtime elisp calls no process, network or server function
-  and no function newer than Emacs 27.1. Probe: `make audit` with planted
-  positives.
+  and nothing newer than Emacs 27.1. Probe: `make audit` with planted
+  positives, and `make test-emacs27` (build and suite on Emacs 27.1).
 - [ ] ISC-A2: Anti: Opening, viewing, rendering, exporting or browsing a
   drawing never modifies the drawing file. Probe: ERT hashes fixtures before
   and after each of those commands.
@@ -335,6 +335,9 @@ maintainable.
   button are checked with trusted input through the DevTools protocol.
 - 2026-10-16 Learned: in batch Emacs, file-notify events are dispatched only
   while reading input (`read-event`), not by `accept-process-output`.
+- 2026-10-16 Without SVG display (emacs -nw, or a build without librsvg) the
+  drawing shows as a one-line note and `b` still opens the browser editor,
+  instead of failing in create-image.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
@@ -348,6 +351,14 @@ maintainable.
   tolerates stale back entries. criterion now: ISC-3 and ISC-3.1 treat
   forward-without-back as an error and never let an edit add a stale entry,
   while reading legacy `boundElementIds`.
+
+- 2026-10-16 conjectured: the grep audit of Emacs 28+ functions is enough to
+  keep the runtime on Emacs 27.1. refuted by: the first run on a real 27.1
+  (`make test-emacs27`) failed to load esketch-freehand.el, which used
+  `(setf (plist-get ...))`, a place added in 28 that no name list catches.
+  learned: a pattern audit only knows the failures already thought of; the
+  real interpreter is the check. criterion now: ISC-A1 also requires the
+  build and suite to pass on Emacs 27.1, and the audit gained the pattern.
 
 ## Verification
 

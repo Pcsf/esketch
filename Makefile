@@ -9,7 +9,7 @@ BATCH  = $(EMACS) -Q --batch -L .
 EL     = esketch-json.el esketch-model.el esketch-rough.el esketch-freehand.el esketch-fonts.el esketch-render.el esketch.el esketch-org.el
 BUILD  = build
 
-.PHONY: all compile test test-el test-render ref-basic test-render-corpus audit corpus test-corpus fonts page verify-page verify-firefox clean
+.PHONY: all compile test test-el test-render ref-basic test-render-corpus audit corpus test-corpus fonts page verify-page verify-firefox test-emacs27 clean
 
 all: compile test audit
 
@@ -26,11 +26,11 @@ test-el: compile
 # so an empty result cannot come from a broken pattern.  browse-url is the one
 # sanctioned exit, on an explicit command.
 FORBIDDEN_CALLS = (call-process|process-file|start-process|make-process|shell-command|url-retrieve|open-network-stream|make-network-process)
-EMACS28_FNS     = (string-search|string-replace|length[<>=]|ensure-list|string-pad|string-fill|string-chop-newline|file-name-concat|take |ntake |pos-bol|pos-eol|json-parse|json-serialize|json-insert|seq-keep|plistp|always |named-let|text-property-search)
+EMACS28_FNS     = (setf \(plist-get|string-search|string-replace|length[<>=]|ensure-list|string-pad|string-fill|string-chop-newline|file-name-concat|take |ntake |pos-bol|pos-eol|json-parse|json-serialize|json-insert|seq-keep|plistp|always |named-let|text-property-search)
 audit: | $(BUILD)
-	@printf '(call-process "x")\n(string-search "a" "b")\n' > $(BUILD)/planted.txt
+	@printf '(call-process "x")\n(string-search "a" "b")\n(setf (plist-get p :k) 1)\n' > $(BUILD)/planted.txt
 	@test "$$(grep -cE '$(FORBIDDEN_CALLS)' $(BUILD)/planted.txt)" = 1 || { echo "audit: process pattern is broken"; exit 1; }
-	@test "$$(grep -cE '\($(EMACS28_FNS)' $(BUILD)/planted.txt)" = 1 || { echo "audit: version pattern is broken"; exit 1; }
+	@test "$$(grep -cE '\($(EMACS28_FNS)' $(BUILD)/planted.txt)" = 2 || { echo "audit: version pattern is broken"; exit 1; }
 	@if grep -nE '$(FORBIDDEN_CALLS)' $(EL); then echo "audit: runtime reaches outside Emacs"; exit 1; fi
 	@if grep -nE '\($(EMACS28_FNS)' $(EL); then echo "audit: runtime needs Emacs 28+"; exit 1; fi
 	@if grep -nE "^\(require '" $(EL) | grep -vE "'(cl-lib|subr-x|filenotify|org|ol|esketch|esketch-json|esketch-model|esketch-rough|esketch-freehand|esketch-fonts|esketch-render|esketch-org|browse-url)\)"; then \
@@ -125,3 +125,15 @@ verify-firefox: verify-page
 	firefox --headless --no-remote --profile "$(BUILD)/verify/ff-profile" --window-size=1300,800 \
 	  --screenshot "$(CURDIR)/$(BUILD)/verify/firefox.png" "file://$(CURDIR)/$(BUILD)/verify/page.html"
 	@echo "verify-firefox: look at $(BUILD)/verify/firefox.png"
+
+# The whole build and suite on Emacs 27.1, the oldest Emacs esketch supports,
+# in a container (rootless Docker; DOCKER_HOST may need to point at it).  The
+# repo is mounted read-only and copied, so nothing here changes.
+EMACS27_IMAGE ?= silex/emacs:27.1
+test-emacs27:
+	docker run --rm -v "$(CURDIR)":/src:ro $(EMACS27_IMAGE) sh -c '\
+	  cp -r /src /work && cd /work && rm -f *.elc && \
+	  emacs -Q --batch -L . --eval "(setq byte-compile-error-on-warn t)" -f batch-byte-compile $(EL) && \
+	  emacs -Q --batch -L . -L test -l test/esketch-test.el -l test/esketch-rough-test.el \
+	    -l test/esketch-freehand-test.el -l test/esketch-render-test.el -l test/esketch-editor-test.el \
+	    -l test/esketch-import-test.el -f ert-run-tests-batch-and-exit'
