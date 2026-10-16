@@ -471,9 +471,9 @@ real DOM events at home.
 
 ## Remaining Work
 
-- [ ] See the Org preview and the in-place editor in a real GUI frame, in
-  your own Emacs -- verified so far through librsvg renders of the exact
-  overlay image and ERT, not a frame screenshot.
+- [x] See it in a real GUI frame: the demo Org note opened in a Wayland Emacs
+  frame rasterised both drawings (529x233, 465x263), and the principal
+  confirmed the browser editor works from it (2026-10-16).
 - [x] Draw images (with crop and flips), frame outlines, and the mask that
   cuts an arrow's line under its label -- the corpus image and 8 masks
   match Excalidraw's export when viewed side by side.
