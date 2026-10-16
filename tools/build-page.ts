@@ -15,6 +15,9 @@ for (const o of r.outputs) {
   if (o.path.endsWith(".js")) js = await o.text();
   else if (o.path.endsWith(".css")) css = await o.text();
 }
+// The bundler inlines __dirname as this machine's absolute path; keep it out of
+// the page.
+js = js.split(resolve(".") + "/").join("./");
 const fontDir = resolve("tools/node_modules/@excalidraw/excalidraw/dist/prod/fonts");
 const fonts: Record<string, string> = {};
 for (const fam of readdirSync(fontDir).filter(f => f !== "Xiaolai"))
