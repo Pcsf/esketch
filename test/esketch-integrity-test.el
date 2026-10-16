@@ -30,8 +30,9 @@ in the modification time; the file is first dated an hour back."
   "Opening, viewing, rendering, exporting and browsing never write the drawing."
   (let* ((file (esketch-editor-test--copy-fixture))
          (svg (concat file ".svg"))
-         (page (make-temp-file "esketch-page" nil ".html"))
-         (esketch-page-directory (file-name-directory page)))
+         (pages (make-temp-file "esketch-pages" t))
+         (page (expand-file-name "x.html" pages))
+         (esketch-page-directory pages))
     (unwind-protect
         (esketch-integrity-test--unchanged file
           (let ((buf (esketch-open file)))
@@ -45,7 +46,8 @@ in the modification time; the file is first dated an hour back."
           (esketch-render-svg (esketch-file-doc (esketch-read-file file)))
           (esketch-export-svg file svg)
           (esketch-page-write (esketch-file-doc (esketch-read-file file)) "x" page))
-      (dolist (f (list file svg page)) (when (file-exists-p f) (delete-file f))))))
+      (dolist (f (list file svg)) (when (file-exists-p f) (delete-file f)))
+      (delete-directory pages t))))
 
 (ert-deftest esketch-integrity-test-org ()
   "Showing a drawing in Org, editing it and discarding, leave the file alone."

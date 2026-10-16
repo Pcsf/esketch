@@ -52,6 +52,7 @@
   (let ((m (make-sparse-keymap)))
     (define-key m [mouse-1] #'esketch-org-edit-at-mouse)
     (define-key m (kbd "RET") #'esketch-org-edit)
+    (define-key m "b" #'esketch-org-browse)
     m)
   "Keys over a drawing shown in an Org buffer.")
 
@@ -93,13 +94,27 @@
                             (esketch-org--file (match-string-no-properties 1))))))
       found)))
 
+(defvar esketch-org-editing-map
+  (let ((m (make-sparse-keymap)))
+    (set-keymap-parent m esketch-keys-map)
+    (define-key m (kbd "C-c C-c") #'esketch-org-commit)
+    (define-key m (kbd "C-c C-k") #'esketch-org-discard)
+    m)
+  "Keys of an Org buffer while one of its drawings is being edited.")
+
+(define-minor-mode esketch-org-editing-mode
+  "On while a drawing of this Org buffer is edited in place.
+The drawing's keys then work wherever point is; C-c C-c saves the
+drawing and C-c C-k throws the change away, and both end the mode."
+  :lighter " esketch-edit" :keymap esketch-org-editing-map)
+
 (defvar esketch-org-edit-map
   (let ((m (make-sparse-keymap)))
     (set-keymap-parent m esketch-edit-map)
     (define-key m (kbd "C-c C-c") #'esketch-org-commit)
     (define-key m (kbd "C-c C-k") #'esketch-org-discard)
     m)
-  "Keys over a drawing being edited in an Org buffer.")
+  "Mouse and keys over a drawing being edited in an Org buffer.")
 
 (defun esketch-org-edit ()
   "Edit the drawing of the esketch link at point, in place."
@@ -114,7 +129,14 @@
       (overlay-put ov 'keymap esketch-org-edit-map)
       (overlay-put ov 'help-echo "C-c C-c: save drawing, C-c C-k: discard")
       (goto-char (nth 0 link))
-      (message "Editing drawing: C-c C-c saves, C-c C-k discards"))))
+      (esketch-org-editing-mode 1)
+      (message "Editing drawing: C-c C-c saves, C-c C-k discards, b opens the browser"))))
+
+(defun esketch-org-browse ()
+  "Open the drawing at point in the browser editor."
+  (interactive)
+  (unless esketch--ed (esketch-org-edit))
+  (esketch-browse))
 
 (defun esketch-org-edit-at-mouse (event)
   "Edit the drawing clicked on."
@@ -128,6 +150,7 @@
       (esketch-write-file (esketch-ed-efile ed) (esketch-ed-file ed)))
     (delete-overlay (esketch-ed-overlay ed))
     (setq esketch--ed nil)
+    (esketch-org-editing-mode -1)
     (esketch-org-refresh)))
 
 (defun esketch-org-commit ()

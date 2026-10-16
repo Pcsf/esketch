@@ -961,26 +961,8 @@ Uses the clipboard when it holds a drawing, else the newest save in
 
 ;;;; Editor setup
 
-(defvar esketch-edit-map
+(defvar esketch-keys-map
   (let ((m (make-sparse-keymap)))
-    (dolist (k '([down-mouse-1] [S-down-mouse-1] [C-down-mouse-1] [M-down-mouse-1]))
-      (define-key m k #'esketch-mouse-down))
-    (define-key m [mouse-1] #'esketch-mouse-click)
-    (define-key m [C-mouse-1] #'ignore)
-    (define-key m [drag-mouse-1] #'esketch-mouse-drag)
-    (define-key m [S-drag-mouse-1] #'esketch-mouse-drag)
-    (define-key m [M-drag-mouse-1] #'esketch-mouse-drag)
-    (define-key m [C-drag-mouse-1] #'ignore)
-    (define-key m [double-mouse-1] #'esketch-edit-text)
-    (define-key m [down-mouse-2] #'ignore)
-    (define-key m [mouse-2] #'ignore)
-    (define-key m [drag-mouse-2] #'esketch-mouse-pan)
-    (define-key m [down-mouse-3] #'esketch-context-menu)
-    (define-key m [mouse-3] #'ignore)
-    (dolist (k '([C-wheel-up] [C-mouse-4]))
-      (define-key m k #'esketch-zoom-in))
-    (dolist (k '([C-wheel-down] [C-mouse-5]))
-      (define-key m k #'esketch-zoom-out))
     (define-key m (kbd "TAB") #'esketch-select-next)
     (define-key m (kbd "<backtab>") #'esketch-select-previous)
     (define-key m "a" #'esketch-arrow-tool)
@@ -1009,7 +991,31 @@ Uses the clipboard when it holds a drawing, else the newest save in
     (define-key m "U" #'esketch-redo)
     (define-key m (kbd "C-?") #'esketch-redo)
     m)
-  "Keys and mouse bindings over a drawing being edited.")
+  "Keyboard keys of a drawing being edited; they work wherever point is.")
+
+(defvar esketch-edit-map
+  (let ((m (make-sparse-keymap)))
+    (set-keymap-parent m esketch-keys-map)
+    (dolist (k '([down-mouse-1] [S-down-mouse-1] [C-down-mouse-1] [M-down-mouse-1]))
+      (define-key m k #'esketch-mouse-down))
+    (define-key m [mouse-1] #'esketch-mouse-click)
+    (define-key m [C-mouse-1] #'ignore)
+    (define-key m [drag-mouse-1] #'esketch-mouse-drag)
+    (define-key m [S-drag-mouse-1] #'esketch-mouse-drag)
+    (define-key m [M-drag-mouse-1] #'esketch-mouse-drag)
+    (define-key m [C-drag-mouse-1] #'ignore)
+    (define-key m [double-mouse-1] #'esketch-edit-text)
+    (define-key m [down-mouse-2] #'ignore)
+    (define-key m [mouse-2] #'ignore)
+    (define-key m [drag-mouse-2] #'esketch-mouse-pan)
+    (define-key m [down-mouse-3] #'esketch-context-menu)
+    (define-key m [mouse-3] #'ignore)
+    (dolist (k '([C-wheel-up] [C-mouse-4]))
+      (define-key m k #'esketch-zoom-in))
+    (dolist (k '([C-wheel-down] [C-mouse-5]))
+      (define-key m k #'esketch-zoom-out))
+    m)
+  "Mouse bindings over a drawing being edited, on top of `esketch-keys-map'.")
 
 (defun esketch--start (file overlay)
   "Start editing FILE in OVERLAY of the current buffer; return the editor."
@@ -1024,6 +1030,7 @@ Uses the clipboard when it holds a drawing, else the newest save in
 
 (defvar esketch-file-mode-map
   (let ((m (make-sparse-keymap)))
+    (set-keymap-parent m esketch-keys-map)
     (define-key m (kbd "C-x C-s") #'esketch-save)
     (define-key m (kbd "C-c C-e") #'esketch-export-current-svg)
     m))
