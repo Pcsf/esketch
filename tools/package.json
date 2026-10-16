@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "devDependencies": {
+    "@excalidraw/utils": "0.1.5",
+    "perfect-freehand": "1.2.0",
+    "roughjs": "4.6.4"
+  }
+}

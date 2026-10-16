@@ -1,6 +1,6 @@
 ---
 phase: climbing
-progress: 5/34
+progress: 9/36
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -105,13 +105,27 @@ browser page; get it right once and both editors stay honest.
 Why: the drawing has to look like what was meant, in Emacs and in the browser
 alike.
 
-- [ ] ISC-4: Emacs renders every supported element to SVG, in hand-drawn style
+- [x] ISC-4: Emacs renders every supported element to SVG, in hand-drawn style
   (rough, seeded by each element's `seed`) and in a plain style. Probe: ERT
   golden SVG per element type and style.
-- [ ] ISC-5: The hand-drawn style is deterministic and the same in both
-  renderers: for the same element and seed, Emacs and the browser produce the
-  same path geometry. Probe: shared fixture table run by ERT and by `bun test`;
-  paths compared numerically.
+- [x] ISC-5: The hand-drawn style is deterministic and the same in both
+  renderers: `esketch-rough.el`, a port of roughjs 4.6.4 (the version
+  Excalidraw pins), reproduces real roughjs path data for every case in
+  `test/rough-cases.json`, and the page draws with that same roughjs. Probe:
+  ERT against the table bun generates from the real library; numbers within
+  1e-6.
+- [x] ISC-5.1: Freehand strokes match Excalidraw: `esketch-freehand.el`, a
+  port of perfect-freehand 1.2.0 with Excalidraw's stroke options and path
+  rounding, reproduces the path data of the real library for every case in
+  `test/freehand-cases.json`. Probe: ERT against the bun-generated table.
+- [x] ISC-5.2: Each element type gets the roughjs options and shape call
+  Excalidraw uses for it (roughness damping for small shapes, dash arrays,
+  fill weight and gap, rounded corners as paths, curved and elbow arrows,
+  arrowheads, freehand loop fills), after the same load-time defaults and
+  point normalisation Excalidraw applies. Probe: `make test-render-corpus`
+  draws every corpus file with esketch and with real Excalidraw
+  (@excalidraw/utils 0.1.5 `exportToSvg` in headless Chromium) and compares
+  every path; `make test-render` does the same offline for the basic fixture.
 - [ ] ISC-6: Text renders in a hand-drawn font that ships inside the package
   and the page, with an OFL or compatible licence recorded in README. Probe:
   page scanned for external font URLs (none); README licence line read.
@@ -276,6 +290,12 @@ maintainable.
 - 2026-10-16 Deleting an element removes it from every boundElements list
   that names it, stale ones included; first edit of a legacy element moves
   its `boundElementIds` into `boundElements`, as Excalidraw does on load.
+- 2026-10-16 Rendering oracle: @excalidraw/utils 0.1.5 exportToSvg run in
+  headless Chromium (bun bundle, `--allow-file-access-from-files`). Ports of
+  roughjs and perfect-freehand were written by delegated agents against
+  oracle tables from the real libraries, then rechecked here.
+- 2026-10-16 Load-time defaults (Excalidraw's restore) are applied to a copy
+  for drawing only; the saved file keeps what the user had.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
@@ -292,6 +312,14 @@ maintainable.
 
 ## Verification
 
+- ISC-4: corpus 44/44 files and basic fixture equal to Excalidraw's export;
+  plain style by ERT; librsvg (Emacs's renderer) PNG of the fixture viewed.
+- ISC-5: ERT rough suite, 206 sets, max deviation 2.8e-14; five planted
+  bugs fail it.
+- ISC-5.1: ERT freehand suite, max deviation 1.1e-13, 35 d strings exact;
+  four planted bugs fail it.
+- ISC-5.2: `make test-render-corpus` 44 files, 3513 paths, 0 differ; a
+  planted 0.3 px change is caught.
 - ISC-1, ISC-1.1: `make test-corpus` 44/44 match JSON.stringify, 43
   byte-identical; planted mismatch exits 1. ERT round-trip and json-cases
   (47 rows from bun).
@@ -300,6 +328,15 @@ maintainable.
 - ISC-3.1: `make test-corpus` 0 files with errors, 440 sequences, 0 added a
   problem; red at 19 before the delete fix.
 - ISC-A3: ERT `unknown-fields-survive-edits` + corpus round trip.
+
+- 2026-10-16 conjectured: following shape.ts element by element reproduces
+  Excalidraw's drawing. refuted by: only 34 of 44 corpus files matched, and
+  10 failed or drifted. learned: Excalidraw draws the element as restore()
+  leaves it on load (field defaults, strokeSharpness to roundness, line
+  heights, arrowhead names, arrows and lines moved so the first point is the
+  origin) and drops invisible ones, so restore is part of rendering.
+  criterion now: ISC-5.2 is judged by a head-to-head against real Excalidraw
+  on the corpus, not by reading its source.
 
 ## Test Strategy
 
@@ -315,7 +352,9 @@ real DOM events at home.
 | ISC-3 | property | binding invariant after random edits | 0 violations in 1000 sequences | ERT | F1 |
 | ISC-3.1 | property | random edits on every corpus file | 0 files with errors, 0 sequences adding a problem | make test-corpus | F1 |
 | ISC-4 | golden | SVG per element type and style | matches golden | ERT | F2 |
-| ISC-5 | parity | rough paths Emacs vs browser | equal within 1e-6 | ERT + bun test | F2 |
+| ISC-5 | parity | esketch-rough vs real roughjs 4.6.4, 138 cases | numbers within 1e-6 | ERT | F2 |
+| ISC-5.1 | parity | esketch-freehand vs real perfect-freehand 1.2.0, 52 cases | outline within 1e-6, d exact | ERT | F2 |
+| ISC-5.2 | parity | every corpus file drawn by esketch and by Excalidraw | 0 paths differ beyond 2-decimal rounding | make test-render-corpus | F2 |
 | ISC-6 | scan | external font URLs in page | none | ERT | F2 |
 | ISC-7 | visual | side-by-side screenshots | recognised as Excalidraw style | viewed | F2 |
 | ISC-8 | behaviour | synthetic mouse edits and undo | model correct each step | ERT | F3 |
@@ -346,5 +385,10 @@ real DOM events at home.
 
 ## Remaining Work
 
+- [ ] Draw images, frames, embeds, sticky notes and constant-width
+  (laser) freehand strokes -- none occurs in the corpus; today they are
+  skipped or drawn as the variable-width stroke.
+- [ ] Mask under text bound to an arrow, as Excalidraw cuts the line around
+  the label -- the label is drawn, the line is not cut.
 - [ ] Create the private GitHub remote `Pcsf/esketch` -- waits on the
   principal's go-ahead.

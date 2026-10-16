@@ -6,20 +6,20 @@
 EMACS ?= emacs
 BUN   ?= bun
 BATCH  = $(EMACS) -Q --batch -L .
-EL     = esketch-json.el esketch-model.el
+EL     = esketch-json.el esketch-model.el esketch-rough.el esketch-freehand.el esketch-render.el
 BUILD  = build
 
-.PHONY: all compile test test-el audit corpus test-corpus clean
+.PHONY: all compile test test-el test-render ref-basic test-render-corpus audit corpus test-corpus clean
 
 all: compile test audit
 
 compile:
 	$(BATCH) --eval '(setq byte-compile-error-on-warn t)' -f batch-byte-compile $(EL)
 
-test: test-el
+test: test-el test-render
 
 test-el: compile
-	$(BATCH) -l test/esketch-test.el -f ert-run-tests-batch-and-exit
+	$(BATCH) -L test -l test/esketch-test.el -l test/esketch-rough-test.el -l test/esketch-freehand-test.el -l test/esketch-render-test.el -f ert-run-tests-batch-and-exit
 
 # Runtime files must not reach outside Emacs, nor use functions newer than
 # Emacs 27.1.  Each scan also runs against a planted file and must hit it,
@@ -33,7 +33,7 @@ audit: | $(BUILD)
 	@test "$$(grep -cE '\($(EMACS28_FNS)' $(BUILD)/planted.txt)" = 1 || { echo "audit: version pattern is broken"; exit 1; }
 	@if grep -nE '$(FORBIDDEN_CALLS)' $(EL); then echo "audit: runtime reaches outside Emacs"; exit 1; fi
 	@if grep -nE '\($(EMACS28_FNS)' $(EL); then echo "audit: runtime needs Emacs 28+"; exit 1; fi
-	@if grep -nE "^\(require '" $(EL) | grep -vE "'(cl-lib|subr-x|esketch-json|esketch-model|browse-url)\)"; then \
+	@if grep -nE "^\(require '" $(EL) | grep -vE "'(cl-lib|subr-x|esketch-json|esketch-model|esketch-rough|esketch-freehand|esketch-render|browse-url)\)"; then \
 	  echo "audit: unexpected require"; exit 1; fi
 	@echo "audit: planted cases caught, runtime clean"
 
@@ -60,3 +60,24 @@ $(BUILD):
 
 clean:
 	rm -rf $(BUILD) *.elc test/*.elc
+
+# esketch's SVG for the basic fixture against the one real Excalidraw
+# exported from it (test/data/basic.ref.svg, made by make ref-basic).
+test-render: compile | $(BUILD)
+	$(BATCH) -l esketch-render --eval '(with-temp-file "$(BUILD)/basic.svg" (insert (esketch-render-svg (esketch-file-doc (esketch-read-file "test/data/basic.excalidraw")))))'
+	$(BUN) tools/compare-svg.ts $(BUILD)/basic.svg test/data/basic.ref.svg
+
+ref-basic:
+	$(BUN) tools/excalidraw-ref.ts $(BUILD)/ref-basic test/data/basic.excalidraw
+	cp $(BUILD)/ref-basic/basic.svg test/data/basic.ref.svg
+
+# Every corpus file drawn by esketch and by real Excalidraw (@excalidraw/utils
+# in headless Chromium); fails on any path that differs.
+test-render-corpus: compile
+	@test -n "$$(ls $(BUILD)/corpus 2>/dev/null)" || { echo "test-render-corpus: run make corpus first"; exit 1; }
+	$(BUN) tools/excalidraw-ref.ts $(BUILD)/ref $(BUILD)/corpus/*.excalidraw
+	rm -rf $(BUILD)/esk && mkdir -p $(BUILD)/esk
+	$(BATCH) -l esketch-render --eval '(dolist (f (directory-files "$(BUILD)/corpus" t "excalidraw$$")) (with-temp-file (concat "$(BUILD)/esk/" (file-name-base f) ".svg") (insert (esketch-render-svg (esketch-file-doc (esketch-read-file f))))))'
+	@bad=0; for f in $(BUILD)/ref/*.svg; do \
+	  $(BUN) tools/compare-svg.ts $(BUILD)/esk/$$(basename $$f) $$f > $(BUILD)/cmp.txt || { bad=$$((bad+1)); echo "$$(basename $$f):"; head -3 $(BUILD)/cmp.txt; }; \
+	done; echo "test-render-corpus: $$(ls $(BUILD)/ref | wc -l) files, $$bad differ"; test $$bad = 0

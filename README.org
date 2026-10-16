@@ -1,7 +1,7 @@
 #+TITLE: esketch -- Excalidraw-style diagrams from Emacs
 
-Status: in progress.  The file format and the document model work; the
-editors do not exist yet.  The ideal state, the claims that define done and
+Status: in progress.  The file format, the document model and rendering
+work; the editors do not exist yet.  The ideal state, the claims that define done and
 how each one is tested are in [[file:ISA.md][ISA.md]].
 
 * What it will be
@@ -23,6 +23,11 @@ the package, no network, no local server, no browser extension.
 - =esketch-model.el= adds, moves, deletes, binds and unbinds elements while
   keeping arrows attached to their shapes and text inside its container.
   It reads files from before 2021, which list arrows in =boundElementIds=.
+- =esketch-render.el= draws a document as SVG exactly as Excalidraw's own
+  export does: every path of 44 real drawings matches.  It uses
+  =esketch-rough.el= and =esketch-freehand.el=, Lisp ports of roughjs 4.6.4
+  and perfect-freehand 1.2.0 (both MIT), the libraries Excalidraw draws with.
+  Text falls back to the system sans-serif until the hand-drawn font ships.
 
 * Dependencies
 
@@ -36,15 +41,20 @@ Build and test, at home only, never needed on the target machine:
 - bun, to regenerate =test/json-cases.json= (=bun tools/gen-cases.ts=) and
   for =make test-corpus=.
 - gh, authenticated, for =make corpus=.
+- Chromium, for =make ref-basic= and =make test-render-corpus=, which run
+  real Excalidraw (=@excalidraw/utils= 0.1.5, installed with =bun install=
+  in =tools/=) as the reference.
 
 * Building and testing
 
 | Command            | What it does                                                   |
 |--------------------+----------------------------------------------------------------|
-| =make=             | byte-compile (warnings are errors), ERT suite, audit           |
+| =make=             | byte-compile (warnings are errors), ERT, SVG vs reference, audit |
 | =make corpus=      | fetch the public =.excalidraw= files in =test/corpus.txt=      |
 | =make test-corpus= | save each corpus file unmodified and compare with what         |
 |                    | JavaScript writes; then edit each at random and check links    |
+| =make test-render-corpus= | draw each corpus file with esketch and with real Excalidraw, |
+|                    | and compare every path                                         |
 
 The corpus is third-party data, so only its list (repository, path, blob
 sha) is committed; the files go to =build/corpus=.  The audit fails if

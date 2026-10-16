@@ -229,6 +229,10 @@
                          "e" (if (< e 0) "-" "+")
                          (number-to-string (abs e))))))))))))
 
+(defun esketch-json-number-string (n)
+  "N as JavaScript prints it, e.g. in a template string."
+  (if (floatp n) (esketch-json--float n) (number-to-string n)))
+
 (defun esketch-json--string-out (s)
   (insert ?\")
   (if (not (string-match-p "[\"\\\\\000-\037]" s))

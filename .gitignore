@@ -1,3 +1,4 @@
 build/
 *.elc
 ISA.html
+tools/node_modules/
