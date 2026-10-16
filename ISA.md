@@ -1,6 +1,6 @@
 ---
 phase: climbing
-progress: 26/37
+progress: 27/37
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -87,10 +87,13 @@ browser page; get it right once and both editors stay honest.
   `JSON.stringify(data, null, 2)` would, so a save never adds diff noise.
   Probe: `make test-corpus` over the public corpus listed in
   `test/corpus.txt`, compared against bun's `JSON.stringify` output.
-- [ ] ISC-2: Elements esketch writes (rectangle, ellipse, diamond, line, arrow,
-  text, freedraw) load in excalidraw.com and look as drawn in esketch. Probe:
-  fixture written by esketch, opened on excalidraw.com in a real browser at
-  home, screenshot compared.
+- [x] ISC-2: Drawings esketch writes load in Excalidraw with every element,
+  binding and label intact, and Excalidraw draws them path for path as esketch
+  does. Probe: test/data/esketch-made.excalidraw, made only with esketch's
+  editor commands; `make verify-page` loads it in Excalidraw 0.18.1 and
+  compares bindings after its load-time repair (a planted broken binding is
+  caught); `make test-render` compares it with Excalidraw's export. Tested
+  against the Excalidraw packages, not the excalidraw.com site.
 - [x] ISC-3: Arrow bindings (`startBinding`, `endBinding`, `boundElements`)
   stay consistent after every edit operation: moving or deleting a bound shape
   moves or unbinds its arrows, and no edit leaves a broken or stale link.
@@ -370,6 +373,8 @@ maintainable.
 - ISC-16, ISC-17, ISC-25: ERT import tests; watch 0.2 s to the editor; the
   Org refresh test fails when its hook is removed.
 - ISC-20: ERT export-svg and Org HTML export tests.
+- ISC-2: verify-compat ok for 9 elements; broken binding planted and caught;
+  esketch-made render 9/9 paths equal to Excalidraw's.
 - ISC-A4: MIT notices for roughjs and perfect-freehand in the ported files
   (grep); no Excalidraw application code in the package.
 - ISC-5.2: `make test-render-corpus` 44 files, 3513 paths, 0 differ; a

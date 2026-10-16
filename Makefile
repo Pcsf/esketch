@@ -66,10 +66,13 @@ clean:
 test-render: compile | $(BUILD)
 	$(BATCH) -l esketch-render --eval '(with-temp-file "$(BUILD)/basic.svg" (insert (esketch-render-svg (esketch-file-doc (esketch-read-file "test/data/basic.excalidraw")))))'
 	$(BUN) tools/compare-svg.ts $(BUILD)/basic.svg test/data/basic.ref.svg
+	$(BATCH) -l esketch-render --eval '(with-temp-file "$(BUILD)/made.svg" (insert (esketch-render-svg (esketch-file-doc (esketch-read-file "test/data/esketch-made.excalidraw")))))'
+	$(BUN) tools/compare-svg.ts $(BUILD)/made.svg test/data/esketch-made.ref.svg
 
 ref-basic:
-	$(BUN) tools/excalidraw-ref.ts $(BUILD)/ref-basic test/data/basic.excalidraw
+	$(BUN) tools/excalidraw-ref.ts $(BUILD)/ref-basic test/data/basic.excalidraw test/data/esketch-made.excalidraw
 	cp $(BUILD)/ref-basic/basic.svg test/data/basic.ref.svg
+	cp $(BUILD)/ref-basic/esketch-made.svg test/data/esketch-made.ref.svg
 
 # Every corpus file drawn by esketch and by real Excalidraw (@excalidraw/utils
 # in headless Chromium); fails on any path that differs.
@@ -105,6 +108,8 @@ verify-page: compile | $(BUILD)
 	$(BATCH) -l esketch --eval '(esketch-page-write (esketch-file-doc (esketch-read-file "test/data/basic.excalidraw")) "basic" "$(BUILD)/verify/page.html")'
 	$(BUN) tools/verify-page.ts
 	$(BUN) tools/verify-input.ts
+	$(BATCH) -l esketch --eval '(esketch-page-write (esketch-file-doc (esketch-read-file "test/data/esketch-made.excalidraw")) "esketch-made" "$(BUILD)/verify/page-made.html")'
+	$(BUN) tools/verify-compat.ts $(BUILD)/verify/page-made.html test/data/esketch-made.excalidraw
 	$(BATCH) -l esketch --eval '(esketch-write-file (esketch-read-file "$(BUILD)/verify/export.excalidraw") "$(BUILD)/verify/export-emacs.excalidraw")'
 	cmp $(BUILD)/verify/export.excalidraw $(BUILD)/verify/export-emacs.excalidraw
 	@echo "verify-page: page export round-trips through esketch byte for byte"
