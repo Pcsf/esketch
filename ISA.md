@@ -1,6 +1,6 @@
 ---
-phase: marking
-progress: 0/32
+phase: climbing
+progress: 5/34
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -79,17 +79,27 @@ but Emacs 27.1+ and a browser.
 Why: the format is the contract with excalidraw.com, with git and with the
 browser page; get it right once and both editors stay honest.
 
-- [ ] ISC-1: Reading and writing a `.excalidraw` file preserves every element
+- [x] ISC-1: Reading and writing a `.excalidraw` file preserves every element
   and every field, including fields esketch does not interpret. Probe: ERT
   round-trips a fixture set exported from excalidraw.com; parsed JSON equal.
+- [x] ISC-1.1: Saving an unmodified file reproduces it byte for byte when
+  Excalidraw wrote it, and in every case writes exactly what Excalidraw's
+  `JSON.stringify(data, null, 2)` would, so a save never adds diff noise.
+  Probe: `make test-corpus` over the public corpus listed in
+  `test/corpus.txt`, compared against bun's `JSON.stringify` output.
 - [ ] ISC-2: Elements esketch writes (rectangle, ellipse, diamond, line, arrow,
   text, freedraw) load in excalidraw.com and look as drawn in esketch. Probe:
   fixture written by esketch, opened on excalidraw.com in a real browser at
   home, screenshot compared.
-- [ ] ISC-3: Arrow bindings (`startBinding`, `endBinding`, `boundElements`)
+- [x] ISC-3: Arrow bindings (`startBinding`, `endBinding`, `boundElements`)
   stay consistent after every edit operation: moving or deleting a bound shape
-  moves or unbinds its arrows. Probe: ERT property test over random edit
-  sequences checks the binding invariant after each step.
+  moves or unbinds its arrows, and no edit leaves a broken or stale link.
+  Probe: ERT property test over random edit sequences checks both after each
+  step.
+- [x] ISC-3.1: On real files, which often carry stale back-references and
+  pre-2021 `boundElementIds`, every file reads with no broken link and random
+  edits never add a broken or stale link. Probe: `make test-corpus` edit
+  phase, 10 sequences of 10 edits per file.
 
 ### F2 - Rendering, hand-drawn and plain
 Why: the drawing has to look like what was meant, in Emacs and in the browser
@@ -208,7 +218,7 @@ maintainable.
 - [ ] ISC-A2: Anti: Opening, viewing, rendering, exporting or browsing a
   drawing never modifies the drawing file. Probe: ERT hashes fixtures before
   and after each of those commands.
-- [ ] ISC-A3: Anti: A save never drops an element or a field that was in the
+- [x] ISC-A3: Anti: A save never drops an element or a field that was in the
   file when it was opened. Probe: covered by the ISC-1 round-trip plus an ERT
   case with unknown future fields.
 - [ ] ISC-A4: Anti: No Excalidraw application source is vendored into the
@@ -224,7 +234,6 @@ maintainable.
   their exact rough.js version and options, which may not be worth it.
 - fog: Emacs Lisp package layout and file split; decided at the first build
   slice, as in ewavedrom and evaporview.
-- fog: Package licence (sibling repos differ).
 - fog: Whether a drawing can also live inside the Org file itself, as
   el-easydraw's base64 data links do. Excalidraw JSON is much larger than a
   compact SVG, so this may cost more readability than it saves in files.
@@ -254,8 +263,43 @@ maintainable.
   into F3 and F6; their code is not used. org-excalidraw's dependencies
   (excalidraw_export on PATH, a Chrome PWA, chrome://flags) are what esketch
   exists to avoid.
+- 2026-10-16 Licence GPL-3.0-or-later, as evaporview; a ported rough.js keeps
+  its MIT notice, which GPL allows.
+- 2026-10-16 Test oracle for the format: 43 of 44 public `.excalidraw` files
+  (32 from excalidraw.com, 9 from the VS Code extension) equal
+  `JSON.stringify(JSON.parse(raw), null, 2)`, two of them plus a final
+  newline. The corpus is third-party, so only its list (repo, path, blob sha)
+  is committed and `make corpus` fetches it at home.
+- 2026-10-16 Own JSON reader and writer instead of json.el: json.el cannot
+  tell null from {} under alist objects, and matching JSON.stringify byte for
+  byte needs control of number and string formatting.
+- 2026-10-16 Deleting an element removes it from every boundElements list
+  that names it, stale ones included; first edit of a legacy element moves
+  its `boundElementIds` into `boundElements`, as Excalidraw does on load.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
+
+## Learning
+
+- 2026-10-16 conjectured: a well-formed drawing has every link on both sides,
+  so any one-sided link is an error. refuted by: 24 of 44 public files failed
+  that check; 12 use the pre-2021 `boundElementIds` field, and the modern ones
+  carry only back-side entries whose arrow is gone, which Excalidraw leaves
+  behind. learned: Excalidraw relies on forward links being listed back and
+  tolerates stale back entries. criterion now: ISC-3 and ISC-3.1 treat
+  forward-without-back as an error and never let an edit add a stale entry,
+  while reading legacy `boundElementIds`.
+
+## Verification
+
+- ISC-1, ISC-1.1: `make test-corpus` 44/44 match JSON.stringify, 43
+  byte-identical; planted mismatch exits 1. ERT round-trip and json-cases
+  (47 rows from bun).
+- ISC-3: ERT `binding-invariant-property`; five planted model bugs each
+  failed it or a targeted test.
+- ISC-3.1: `make test-corpus` 0 files with errors, 440 sequences, 0 added a
+  problem; red at 19 before the delete fix.
+- ISC-A3: ERT `unknown-fields-survive-edits` + corpus round trip.
 
 ## Test Strategy
 
@@ -266,8 +310,10 @@ real DOM events at home.
 | isc | type | check | threshold | tool | anchors_to |
 |-----|------|-------|-----------|------|------------|
 | ISC-1 | round-trip | fixtures from excalidraw.com read and written | parsed JSON equal | ERT | F1 |
+| ISC-1.1 | round-trip | unmodified save vs JSON.stringify(d,null,2) over public corpus | byte-identical, all files | make test-corpus | F1 |
 | ISC-2 | interop | esketch-written file opened on excalidraw.com | loads, looks as drawn | real browser | F1 |
 | ISC-3 | property | binding invariant after random edits | 0 violations in 1000 sequences | ERT | F1 |
+| ISC-3.1 | property | random edits on every corpus file | 0 files with errors, 0 sequences adding a problem | make test-corpus | F1 |
 | ISC-4 | golden | SVG per element type and style | matches golden | ERT | F2 |
 | ISC-5 | parity | rough paths Emacs vs browser | equal within 1e-6 | ERT + bun test | F2 |
 | ISC-6 | scan | external font URLs in page | none | ERT | F2 |

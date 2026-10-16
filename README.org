@@ -1,7 +1,8 @@
 #+TITLE: esketch -- Excalidraw-style diagrams from Emacs
 
-Status: scoped, not built.  The ideal state, the claims that define done
-and how each one is tested are in [[file:ISA.md][ISA.md]].
+Status: in progress.  The file format and the document model work; the
+editors do not exist yet.  The ideal state, the claims that define done and
+how each one is tested are in [[file:ISA.md][ISA.md]].
 
 * What it will be
 
@@ -13,6 +14,16 @@ esketch without loss and diffs in git like any text.
 It is built for locked-down corporate machines: nothing to install beyond
 the package, no network, no local server, no browser extension.
 
+* What works now
+
+- =esketch-json.el= reads JSON and writes it exactly as Excalidraw's
+  =JSON.stringify(data, null, 2)= does.  An unmodified drawing saves byte
+  for byte, so a save adds no noise to a git diff.  Fields esketch does not
+  know are kept.
+- =esketch-model.el= adds, moves, deletes, binds and unbinds elements while
+  keeping arrows attached to their shapes and text inside its container.
+  It reads files from before 2021, which list arrows in =boundElementIds=.
+
 * Dependencies
 
 Runtime:
@@ -21,4 +32,24 @@ Runtime:
 - Any modern browser, for the optional HTML editor.
 
 Build and test, at home only, never needed on the target machine:
-- GNU make, bun, headless Chromium and Firefox.
+- GNU make.
+- bun, to regenerate =test/json-cases.json= (=bun tools/gen-cases.ts=) and
+  for =make test-corpus=.
+- gh, authenticated, for =make corpus=.
+
+* Building and testing
+
+| Command            | What it does                                                   |
+|--------------------+----------------------------------------------------------------|
+| =make=             | byte-compile (warnings are errors), ERT suite, audit           |
+| =make corpus=      | fetch the public =.excalidraw= files in =test/corpus.txt=      |
+| =make test-corpus= | save each corpus file unmodified and compare with what         |
+|                    | JavaScript writes; then edit each at random and check links    |
+
+The corpus is third-party data, so only its list (repository, path, blob
+sha) is committed; the files go to =build/corpus=.  The audit fails if
+runtime code calls a process or network function or needs Emacs 28.
+
+* Licence
+
+GPL-3.0-or-later.
