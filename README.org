@@ -51,7 +51,9 @@ In the browser every key, menu and tool is Excalidraw's own (=?= there lists
 them); the page adds only the Send to Emacs button.
 
 The browser editor is Excalidraw 0.18.1 itself, with its fonts, in one
-self-contained page (=assets/esketch-page.html=) opened from =file://= --
+self-contained page (=assets/esketch-page.html=), built by =make page= (or
+=make=) where bun is available and not stored in git, so copy it along with
+the package to a machine without bun opened from =file://= --
 nothing is installed and nothing goes over the network.  Its *Send to
 Emacs* button copies the drawing and saves it to =esketch-download-directory=
 (=~/Downloads= by default); Emacs picks the save up within a second and

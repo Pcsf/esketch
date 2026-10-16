@@ -11,7 +11,12 @@ BUILD  = build
 
 .PHONY: all compile test test-el bench test-render ref-basic test-render-corpus audit corpus test-corpus fonts page verify-page verify-firefox test-emacs27 clean
 
-all: compile test audit
+all: assets/esketch-page.html compile test audit
+
+# The browser page is built, not stored in git.
+assets/esketch-page.html: tools/build-page.ts tools/page/entry.tsx tools/page/shim.ts tools/package.json
+	cd tools && $(BUN) install --frozen-lockfile
+	$(BUN) tools/build-page.ts
 
 compile:
 	$(BATCH) --eval '(setq byte-compile-error-on-warn t)' -f batch-byte-compile $(EL)

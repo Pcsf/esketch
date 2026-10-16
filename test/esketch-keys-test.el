@@ -56,5 +56,14 @@
     (should (eq (key-binding "b") 'esketch-browse))
     (should (eq (key-binding "r") 'esketch-add-rectangle))))
 
+(ert-deftest esketch-keys-test-missing-page-says-how ()
+  "Without the built page, the browser editor says how to build it."
+  (let ((esketch--dir (make-temp-file "esketch-nopage" t)))
+    (unwind-protect
+        (let ((err (should-error (esketch-page-write (list :obj) "x" "/dev/null")
+                                 :type 'user-error)))
+          (should (string-match-p "make page" (cadr err))))
+      (delete-directory esketch--dir t))))
+
 (provide 'esketch-keys-test)
 ;;; esketch-keys-test.el ends here

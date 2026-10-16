@@ -2,3 +2,4 @@ build/
 *.elc
 ISA.html
 tools/node_modules/
+assets/esketch-page.html

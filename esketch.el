@@ -832,6 +832,9 @@ The files are not changed; customize `esketch-render-style' to keep it."
 
 (defun esketch-page-write (doc name file)
   "Write the offline Excalidraw page for DOC to FILE; NAME names saves."
+  (unless (file-readable-p (expand-file-name "assets/esketch-page.html" esketch--dir))
+    (user-error "The browser editor is not built: run `make page' in %s (needs bun)"
+                esketch--dir))
   (let ((json (replace-regexp-in-string
                "</" "<\\/" (esketch-json-write-to-string doc) t t)))
     (with-temp-buffer
