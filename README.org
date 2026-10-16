@@ -1,8 +1,9 @@
 #+TITLE: esketch -- Excalidraw-style diagrams from Emacs
 
 Status: in progress.  Drawings open, render exactly as in Excalidraw, show
-inline in Org and take small edits in Emacs.  The browser editor for
-mouse-heavy sketching is not built yet.  The ideal state, the claims that define done and
+inline in Org and take small edits in Emacs; =b= opens them in a full
+Excalidraw that runs offline in the browser, and its Send to Emacs button
+brings them back.  The ideal state, the claims that define done and
 how each one is tested are in [[file:ISA.md][ISA.md]].
 
 * What it will be
@@ -48,6 +49,13 @@ the package, no network, no local server, no browser extension.
   =C-c C-c= saves and =C-c C-k= discards.  Org HTML export embeds the
   drawing as SVG.
 
+The browser editor is Excalidraw 0.18.1 itself, with its fonts, in one
+self-contained page (=assets/esketch-page.html=) opened from =file://= --
+nothing is installed and nothing goes over the network.  Its *Send to
+Emacs* button copies the drawing and saves it to =esketch-download-directory=
+(=~/Downloads= by default); Emacs picks the save up within a second and
+shows it, or writes it to the drawing file if the editor was closed.
+
 Keys over a drawing being edited:
 
 | Key                   | Does                                                  |
@@ -60,6 +68,8 @@ Keys over a drawing being edited:
 | =RET=, double-click   | set the label of a shape, or edit a text              |
 | =DEL=                 | delete                                                |
 | =u= =U=               | undo, redo                                            |
+| =b=                   | open in the browser editor (Excalidraw, offline)      |
+| =i=                   | bring the drawing back from the browser now           |
 
 * Dependencies
 
@@ -85,6 +95,9 @@ Build and test, at home only, never needed on the target machine:
 | =make corpus=      | fetch the public =.excalidraw= files in =test/corpus.txt=      |
 | =make test-corpus= | save each corpus file unmodified and compare with what         |
 |                    | JavaScript writes; then edit each at random and check links    |
+| =make page=        | rebuild the browser page from the pinned Excalidraw            |
+| =make verify-page= | drive the page offline in headless Chromium, check the round trip |
+| =make verify-firefox= | screenshot the page in Firefox with no network              |
 | =make test-render-corpus= | draw each corpus file with esketch and with real Excalidraw, |
 |                    | and compare every path                                         |
 

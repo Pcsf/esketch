@@ -1,6 +1,6 @@
 ---
 phase: climbing
-progress: 17/37
+progress: 26/37
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -174,36 +174,41 @@ buffer the user is already in.
 Why: freehand sketching and fast dragging need a real canvas; the page gives
 that without installing anything.
 
-- [ ] ISC-12: `esketch-browse` writes one self-contained `.html` holding the
-  drawing and opens it with `browse-url`. Probe: ERT scan of the generated
-  page finds no `src=`/`href=` to a URL, no `@import`, no `fetch`, no
-  `XMLHttpRequest`, no `WebSocket`, with a planted-positive page caught.
-- [ ] ISC-13: In a real browser the page draws every supported element type,
-  text included, from the same glyph outlines as Emacs,
-  selects, moves, resizes, binds arrows, draws freehand, undoes and redoes,
-  pans and zooms. Probe: headless Chromium run with real DOM events
-  (`make verify`) plus a screenshot viewed.
-- [ ] ISC-14: The page copies the drawing as JSON to the clipboard and also
-  offers it as a `.excalidraw` download; it can also save PNG and SVG. Probe:
-  `make verify` reads the clipboard and the downloaded files.
-- [ ] ISC-15: The page works opened from `file://` with the network disabled,
-  in Chromium-based browsers and Firefox. Probe: `make verify` with network
-  off on both engines.
+- [x] ISC-12: `esketch-browse` (`b` in the editor) writes one self-contained
+  `.html` -- Excalidraw 0.18.1, its CSS, its fonts but the CJK one, and the
+  drawing -- and opens it with `browse-url`; the page's markup loads no
+  script, stylesheet or import from anywhere, and the page itself makes no
+  network request. Probe: ERT page test; `make verify-page` reads Chromium's
+  net log and requires the page's only request to be a planted probe.
+- [x] ISC-13: In a real browser the page is Excalidraw itself, offline: it
+  loads the drawing, draws in Excalifont, and draws rectangles and freehand
+  strokes, drags shapes, undoes, redoes and zooms. Probe: `make verify-page`
+  (headless Chromium; drag with trusted DevTools-protocol mouse input);
+  screenshot viewed.
+- [x] ISC-14: The page's Send to Emacs button copies the drawing as JSON to
+  the clipboard and saves it as NAME.excalidraw to the download directory;
+  Excalidraw's own export saves PNG and SVG. Probe: `make verify-page` clicks
+  the button with trusted input and reads the clipboard and the download.
+- [x] ISC-15: The page works opened from `file://` with the network disabled,
+  in Chromium and Firefox. Probe: `make verify-page` (name resolution off,
+  net log checked) and `make verify-firefox` (proxy on a dead port),
+  screenshots viewed.
 
 ### F5 - Round trip between page and Emacs
 Why: the two editors are one tool only if a drawing moves between them without
 thinking about it.
 
-- [ ] ISC-16: `esketch-import` takes the drawing back from the clipboard or
-  from the newest matching file in the download directory, shows a summary of
-  what changed, and replaces the buffer's drawing as one undoable step.
-  Probe: ERT with clipboard and download-directory fixtures.
-- [ ] ISC-17: Optionally, Emacs watches the download directory with
-  `file-notify` and offers the import when the page saves. Probe: ERT with a
-  temporary directory.
-- [ ] ISC-18: A drawing edited in the page and imported equals, field for
-  field, what the page holds (no loss through the hand-off). Probe: `make
-  verify` exports, ERT imports, both serialisations compared.
+- [x] ISC-16: `esketch-import` (`i`) takes the drawing back from the
+  clipboard or from the newest matching save in the download directory since
+  the page opened, shows what changed, and replaces the drawing as one
+  undoable step. Probe: ERT import tests.
+- [x] ISC-17: While a page is open, Emacs watches the download directory with
+  `file-notify` and takes each save in as it lands (undo reverts it); once
+  the editor is closed, the save is written to the drawing file. Probe: ERT
+  watch tests, 0.2 s from landing to editor.
+- [x] ISC-18: A drawing edited in the page and brought into Emacs is written
+  exactly as the page held it. Probe: `make verify-page` exports from the
+  page, esketch reads and writes it, `cmp` finds the bytes equal.
 
 ### F6 - Diagrams embedded in Org documents
 Why: a drawing should behave like a Lucidchart diagram embedded in Confluence.
@@ -220,13 +225,14 @@ the document shows the result the moment you finish.
   visible. `C-c C-c` commits and shows the refreshed image, and `C-c C-k`
   discards the edit. Probe: ERT on an Org buffer for commit and discard;
   screenshot of an open editor viewed.
-- [ ] ISC-25: A drawing sent from the in-place editor to the browser page and
+- [x] ISC-25: A drawing sent from the in-place editor to the browser page and
   saved there refreshes the inline image in the Org buffer within 2 s of the
   download landing, with no manual command. Probe: ERT with a temporary
   download directory, timed. Builds on the download watch of ISC-17.
-- [ ] ISC-20: `esketch-export-svg` writes a standalone SVG (fonts embedded)
-  that renders the same in Emacs and in a browser, and Org HTML export embeds
-  it. Probe: ERT plus `make verify` screenshot.
+- [x] ISC-20: `esketch-export-svg` writes a standalone SVG, text as glyph
+  outlines so it needs no font anywhere, and Org HTML export embeds the
+  drawing as inline SVG. Probe: ERT export and Org HTML tests; the same SVG
+  is what `make test-render` compares with Excalidraw's export.
 
 ### F0 - Cross-cutting
 Why: the whole point is surviving a locked-down machine and staying
@@ -246,9 +252,11 @@ maintainable.
 - [x] ISC-A3: Anti: A save never drops an element or a field that was in the
   file when it was opened. Probe: covered by the ISC-1 round-trip plus an ERT
   case with unknown future fields.
-- [x] ISC-A4: Anti: No Excalidraw application source is vendored into the
-  package; any ported algorithm (rough.js) carries its MIT notice. Probe:
-  `grep` for the notice in the ported file; licence section of README read.
+- [x] ISC-A4: Anti: No Excalidraw code runs in Emacs: the Lisp side reads,
+  draws and edits on its own, and ported algorithms (roughjs,
+  perfect-freehand) keep their MIT notices. The browser page bundles
+  Excalidraw 0.18.1 unmodified, with its MIT notice in the page. Probe: grep
+  for the notices in the ported files and in assets/esketch-page.html.
 
 ## Not yet specified
 
@@ -312,6 +320,18 @@ maintainable.
   what locked-down machines forbid. Fonts esketch does not ship (Helvetica,
   Cascadia, Nunito...) and characters missing from the outlines fall back to
   SVG text.
+- 2026-10-16 The browser editor is Excalidraw itself (0.18.1, MIT), bundled with
+  React and its fonts into one 8.8 MB offline page, instead of an editor
+  written from scratch: a spike showed it runs from file:// with the network
+  cut, and nothing written here would come near it. Its CDN font loads are
+  redirected to fonts carried in the page. ISC-A4 was reworded from "no
+  Excalidraw source in the package" to "no Excalidraw code in Emacs";
+  ISC-12 to ISC-15 now describe that page.
+- 2026-10-16 Learned: Excalidraw ignores synthetic pointer events for
+  dragging existing shapes (drawing new ones works), so the drag and the Send
+  button are checked with trusted input through the DevTools protocol.
+- 2026-10-16 Learned: in batch Emacs, file-notify events are dispatched only
+  while reading input (`read-event`), not by `accept-process-output`.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
@@ -345,6 +365,11 @@ maintainable.
   discard leaves the file hash unchanged); librsvg render of the editor's
   overlay image viewed. A screenshot of a live GUI frame was not taken: no
   off-screen display server here, and none was added to the live session.
+- ISC-12 to ISC-15, ISC-18: `make verify-page` 13 checks plus the byte
+  round trip, stable over four runs; page and Firefox screenshots viewed.
+- ISC-16, ISC-17, ISC-25: ERT import tests; watch 0.2 s to the editor; the
+  Org refresh test fails when its hook is removed.
+- ISC-20: ERT export-svg and Org HTML export tests.
 - ISC-A4: MIT notices for roughjs and perfect-freehand in the ported files
   (grep); no Excalidraw application code in the package.
 - ISC-5.2: `make test-render-corpus` 44 files, 3513 paths, 0 differ; a

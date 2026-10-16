@@ -283,5 +283,13 @@
       (delete-file file)
       (when (file-exists-p out) (delete-file out)))))
 
+(ert-deftest esketch-editor-test-org-html-export ()
+  "Org HTML export embeds the drawing as inline SVG."
+  (require 'ox-html)
+  (esketch-editor-test--with-org file
+    (let ((html (org-export-as 'html nil nil t)))
+      (should (string-match-p "<svg" html))
+      (should-not (string-match-p (regexp-quote file) html)))))
+
 (provide 'esketch-editor-test)
 ;;; esketch-editor-test.el ends here

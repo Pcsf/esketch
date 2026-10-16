@@ -39,6 +39,7 @@
 (require 'esketch-json)
 (require 'esketch-model)
 (require 'esketch-render)
+(require 'filenotify)
 
 (defgroup esketch nil
   "Excalidraw-style diagrams."
@@ -64,7 +65,7 @@
 
 (cl-defstruct (esketch-ed (:constructor esketch-ed--make))
   efile file overlay view (scale esketch-scale)
-  selected previous undo redo point on-close)
+  selected previous undo redo point on-close browsed watch point-file)
 
 (defvar-local esketch--ed nil
   "The editor active in this buffer.")
@@ -399,6 +400,159 @@ selected, a text is added at the last click."
       (insert (esketch-render-svg (esketch-file-doc (esketch-read-file file)))))
     out))
 
+;;;; Browser editor
+
+(defconst esketch--dir (file-name-directory (or load-file-name buffer-file-name))
+  "Directory esketch was loaded from; the page template lives below it.")
+
+(defcustom esketch-page-directory temporary-file-directory
+  "Where `esketch-browse' writes the editor page."
+  :type 'directory)
+
+(defun esketch-page-write (doc name file)
+  "Write the offline Excalidraw page for DOC to FILE; NAME names saves."
+  (let ((json (replace-regexp-in-string
+               "</" "<\\/" (esketch-json-write-to-string doc) t t)))
+    (with-temp-buffer
+      (let ((coding-system-for-read 'utf-8-unix))
+        (insert-file-contents (expand-file-name "assets/esketch-page.html" esketch--dir)))
+      (goto-char (point-min))
+      (search-forward "__ESKETCH_NAME__")
+      (replace-match (replace-regexp-in-string "[<>&]" "_" name) t t)
+      (search-forward "__ESKETCH_DATA__")
+      (replace-match json t t)
+      (let ((coding-system-for-write 'utf-8-unix))
+        (write-region nil nil file nil 'silent)))
+    file))
+
+(defun esketch-browse ()
+  "Open the drawing in the browser editor (Excalidraw, offline).
+Its Send to Emacs button copies the drawing and saves it to the
+download directory; `esketch-import' brings it back."
+  (interactive)
+  (let* ((ed (esketch--ed-or-error))
+         (name (file-name-base (esketch-ed-file ed)))
+         (page (expand-file-name (format "esketch-%s.html" name) esketch-page-directory)))
+    (esketch-page-write (esketch-ed-doc ed) name page)
+    (setf (esketch-ed-browsed ed) (float-time))
+    (esketch--watch ed)
+    (browse-url-of-file page)
+    page))
+
+;;;; Coming back from the browser
+
+(defcustom esketch-download-directory
+  (or (and (fboundp 'xdg-user-dir) (ignore-errors (xdg-user-dir "DOWNLOAD")))
+      (expand-file-name "~/Downloads"))
+  "Where the browser saves what its Send to Emacs button sends."
+  :type 'directory)
+
+(declare-function xdg-user-dir "xdg" (name))
+
+(defun esketch--summary (old new)
+  (let ((ids (lambda (d) (mapcar (lambda (e) (cons (esketch-get e "id") e))
+                                (cl-remove-if-not #'esketch-live-p
+                                                  (append (esketch-elements d) nil)))))
+        (added 0) (changed 0) (removed 0))
+    (let ((o (funcall ids old)) (n (funcall ids new)))
+      (dolist (e n)
+        (let ((was (cdr (assoc (car e) o))))
+          (cond ((null was) (setq added (1+ added)))
+                ((not (equal (esketch-get was "version") (esketch-get (cdr e) "version")))
+                 (setq changed (1+ changed))))))
+      (dolist (e o) (unless (assoc (car e) n) (setq removed (1+ removed)))))
+    (format "%d added, %d changed, %d removed" added changed removed)))
+
+(defun esketch--parse-drawing (json)
+  (let ((doc (condition-case nil (esketch-json-read-from-string json)
+               (error (user-error "Not an Excalidraw drawing")))))
+    (unless (and (esketch-obj-p doc) (equal (esketch-get doc "type") "excalidraw")
+                 (vectorp (esketch-get doc "elements")))
+      (user-error "Not an Excalidraw drawing"))
+    doc))
+
+(defun esketch-import-json (json &optional ed)
+  "Replace the drawing of ED with JSON, as one undo step.  Return a summary."
+  (let* ((ed (or ed (esketch--ed-or-error)))
+         (doc (esketch--parse-drawing json))
+         (summary (esketch--summary (esketch-ed-doc ed) doc)))
+    (esketch--snapshot ed)
+    (esketch--set-doc ed doc)
+    (esketch--redisplay ed)
+    (message "From the browser: %s (u undoes)" summary)
+    summary))
+
+(defun esketch--download-candidate (ed)
+  "Newest save of ED's drawing in the download directory since the page opened."
+  (let* ((name (regexp-quote (file-name-base (esketch-ed-file ed))))
+         (re (concat "\\`" name " ?\\(?:([0-9]+)\\)?\\.excalidraw\\'"))
+         (since (or (esketch-ed-browsed ed) 0))
+         (best nil) (best-time 0))
+    (when (file-directory-p esketch-download-directory)
+      (dolist (f (directory-files esketch-download-directory t re))
+        (let ((tm (float-time (file-attribute-modification-time (file-attributes f)))))
+          (when (and (>= tm since) (> tm best-time))
+            (setq best f best-time tm)))))
+    best))
+
+(defun esketch-import ()
+  "Bring the drawing back from the browser editor.
+Uses the clipboard when it holds a drawing, else the newest save in
+`esketch-download-directory'."
+  (interactive)
+  (let* ((ed (esketch--ed-or-error))
+         (clip (ignore-errors (gui-get-selection 'CLIPBOARD 'UTF8_STRING)))
+         (from-clip (and (stringp clip) (string-match-p "\"type\": *\"excalidraw\"" clip))))
+    (if from-clip
+        (esketch-import-json clip ed)
+      (let ((f (esketch--download-candidate ed)))
+        (unless f (user-error "Nothing from the browser yet: use its Send to Emacs button"))
+        (esketch-import-json (with-temp-buffer
+                               (let ((coding-system-for-read 'utf-8-unix))
+                                 (insert-file-contents f))
+                               (buffer-string))
+                             ed)))))
+
+(defvar esketch-after-external-save-hook nil
+  "Run with the drawing file after a browser save was written to it.")
+
+(defun esketch--watch (ed)
+  "Import saves from the browser into ED as they land."
+  (esketch--unwatch ed)
+  (when (and (file-directory-p esketch-download-directory)
+             (fboundp 'file-notify-add-watch))
+    (let ((buf (current-buffer)))
+      (setf (esketch-ed-watch ed)
+            (ignore-errors
+              (file-notify-add-watch
+               esketch-download-directory '(change)
+               (lambda (event)
+                 (when (memq (nth 1 event) '(created changed))
+                   (run-at-time 0.2 nil #'esketch--on-download ed buf)))))))))
+
+(defun esketch--unwatch (ed)
+  (when (esketch-ed-watch ed)
+    (ignore-errors (file-notify-rm-watch (esketch-ed-watch ed)))
+    (setf (esketch-ed-watch ed) nil)))
+
+(defun esketch--on-download (ed buf)
+  (let ((f (esketch--download-candidate ed)))
+    (when (and f (not (equal f (esketch-ed-point-file ed))))
+      (let ((json (with-temp-buffer
+                    (let ((coding-system-for-read 'utf-8-unix)) (insert-file-contents f))
+                    (buffer-string))))
+        (when (ignore-errors (esketch--parse-drawing json))
+          (setf (esketch-ed-point-file ed) f)
+          (setf (esketch-ed-browsed ed)
+                (float-time (file-attribute-modification-time (file-attributes f))))
+          (if (and (buffer-live-p buf) (overlay-buffer (esketch-ed-overlay ed)))
+              (with-current-buffer buf (esketch-import-json json ed))
+            (esketch--unwatch ed)
+            (let ((ef (esketch-ed-efile ed)))
+              (setf (esketch-file-doc ef) (esketch--parse-drawing json))
+              (esketch-write-file ef (esketch-ed-file ed))
+              (run-hook-with-args 'esketch-after-external-save-hook (esketch-ed-file ed)))))))))
+
 ;;;; Editor setup
 
 (defvar esketch-edit-map
@@ -422,6 +576,8 @@ selected, a text is added at the last click."
     (define-key m "o" #'esketch-add-ellipse)
     (define-key m "d" #'esketch-add-diamond)
     (define-key m "c" #'esketch-connect)
+    (define-key m "b" #'esketch-browse)
+    (define-key m "i" #'esketch-import)
     (define-key m "u" #'esketch-undo)
     (define-key m (kbd "C-/") #'esketch-undo)
     (define-key m "U" #'esketch-redo)

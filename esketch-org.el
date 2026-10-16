@@ -174,6 +174,15 @@
            (esketch-render-svg (esketch-file-doc (esketch-read-file file))))
           (t (or desc path)))))
 
+(defun esketch-org--refresh-all (_file)
+  "Refresh the drawings of every Org buffer showing them."
+  (dolist (b (buffer-list))
+    (with-current-buffer b
+      (when (and (bound-and-true-p esketch-org-mode) (not esketch--ed))
+        (esketch-org-refresh)))))
+
+(add-hook 'esketch-after-external-save-hook #'esketch-org--refresh-all)
+
 (org-link-set-parameters "esketch" :follow #'esketch-org--follow
                          :export #'esketch-org--export)
 
