@@ -1,6 +1,6 @@
 ---
 phase: marking
-progress: 0/27
+progress: 0/32
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -126,6 +126,15 @@ buffer the user is already in.
   the recommended editor, derived from the ISC-10 figures. Probe: README read.
 - [ ] ISC-11: Keyboard-only editing works too: select next/previous element,
   move by grid step, edit text, connect two selected shapes. Probe: ERT.
+- [ ] ISC-26: Right-clicking a shape opens a menu that sets its stroke colour,
+  fill, stroke width, roughness and font size, and right-clicking the
+  background opens a menu to add a shape there. Probe: ERT invokes each menu
+  entry and checks the model.
+- [ ] ISC-27: Every gesture in README's gesture table has a passing ERT case.
+  The table follows el-easydraw's conventions: arrows nudge 1 px and S-arrows
+  10 px, `C-mouse-1` toggles selection, `S-drag` constrains to 45 deg steps or
+  squares, `M-drag` duplicates, middle-drag pans, `C-wheel` zooms. Probe: ERT
+  enumerates the table rows and runs one case per row.
 
 ### F4 - Offline browser editor
 Why: freehand sketching and fast dragging need a real canvas; the page gives
@@ -161,12 +170,25 @@ thinking about it.
   field, what the page holds (no loss through the hand-off). Probe: `make
   verify` exports, ERT imports, both serialisations compared.
 
-### F6 - Org integration and export
-Why: most drawings exist to explain something written next to them.
+### F6 - Diagrams embedded in Org documents
+Why: a drawing should behave like a Lucidchart diagram embedded in Confluence.
+It reads as a picture in the document, one click edits it where it sits, and
+the document shows the result the moment you finish.
 
 - [ ] ISC-19: An Org link `[[esketch:path.excalidraw]]` displays inline as an
-  image and opens the editor on `C-c C-o`. Probe: ERT on an Org buffer;
-  screenshot viewed.
+  image. Probe: ERT on an Org buffer; screenshot viewed.
+- [ ] ISC-23: One command, `esketch-org-insert`, creates a new drawing file
+  under the customisable `esketch-directory`, inserts its link at point, and
+  opens the editor on it. Probe: ERT checks file, link and editor state.
+- [ ] ISC-24: `C-c C-o` or a click on the inline image opens the native editor
+  in place, as an overlay where the image was, with the surrounding text still
+  visible. `C-c C-c` commits and shows the refreshed image, and `C-c C-k`
+  discards the edit. Probe: ERT on an Org buffer for commit and discard;
+  screenshot of an open editor viewed.
+- [ ] ISC-25: A drawing sent from the in-place editor to the browser page and
+  saved there refreshes the inline image in the Org buffer within 2 s of the
+  download landing, with no manual command. Probe: ERT with a temporary
+  download directory, timed. Builds on the download watch of ISC-17.
 - [ ] ISC-20: `esketch-export-svg` writes a standalone SVG (fonts embedded)
   that renders the same in Emacs and in a browser, and Org HTML export embeds
   it. Probe: ERT plus `make verify` screenshot.
@@ -203,6 +225,9 @@ maintainable.
 - fog: Emacs Lisp package layout and file split; decided at the first build
   slice, as in ewavedrom and evaporview.
 - fog: Package licence (sibling repos differ).
+- fog: Whether a drawing can also live inside the Org file itself, as
+  el-easydraw's base64 data links do. Excalidraw JSON is much larger than a
+  compact SVG, so this may cost more readability than it saves in files.
 
 ## Decisions
 
@@ -221,6 +246,14 @@ maintainable.
   ezemtsov/emacs#1); it uses its own SVG format, has no hand-drawn style and
   no Excalidraw compatibility. org-excalidraw needs an external converter on
   PATH. Neither meets the goal; building, pending the principal's confirmation.
+- 2026-10-16 UX references chosen by the principal: org-excalidraw (one
+  command creates the file and link, the link shows inline, saving in the
+  editor refreshes Org within seconds) and el-easydraw (in-place overlay editor
+  in the Org buffer, C-c C-c to commit, right-click menus, modifier gestures),
+  both read like a Lucidchart diagram embedded in Confluence. Their UX goes
+  into F3 and F6; their code is not used. org-excalidraw's dependencies
+  (excalidraw_export on PATH, a Chrome PWA, chrome://flags) are what esketch
+  exists to avoid.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
@@ -244,6 +277,8 @@ real DOM events at home.
 | ISC-10 | bench | drag latency at 10/100/500 elements | figures in README | make bench | F3 |
 | ISC-10.1 | doc | recommended page threshold | stated, derived from ISC-10 | Read | F3 |
 | ISC-11 | behaviour | keyboard-only edits | model correct | ERT | F3 |
+| ISC-26 | behaviour | context menus set properties, add shapes | model correct per entry | ERT | F3 |
+| ISC-27 | behaviour | README gesture table | one passing case per row | ERT | F3 |
 | ISC-12 | scan | external references in page | none, planted caught | ERT | F4 |
 | ISC-13 | e2e | page editing with real DOM events | all operations pass | make verify | F4 |
 | ISC-14 | e2e | clipboard, download, PNG, SVG | files and clipboard read back | make verify | F4 |
@@ -251,7 +286,10 @@ real DOM events at home.
 | ISC-16 | behaviour | import from clipboard and downloads | one undo step, summary shown | ERT | F5 |
 | ISC-17 | behaviour | file-notify offer | offered once per save | ERT | F5 |
 | ISC-18 | round-trip | page export vs Emacs import | field-for-field equal | make verify + ERT | F5 |
-| ISC-19 | behaviour | Org link inline image and C-c C-o | displays, opens | ERT + screenshot | F6 |
+| ISC-19 | behaviour | Org link shows inline image | displays | ERT + screenshot | F6 |
+| ISC-23 | behaviour | one-command insert | file, link, editor open | ERT | F6 |
+| ISC-24 | behaviour | in-place overlay edit, commit, discard | image refreshed or unchanged | ERT + screenshot | F6 |
+| ISC-25 | timing | page save refreshes inline image | within 2 s of download | ERT | F6 |
 | ISC-20 | render | standalone SVG in Emacs and browser | same look | ERT + make verify | F6 |
 | ISC-21 | build | byte-compile | 0 warnings | make compile | F0 |
 | ISC-22 | doc | README deps, keys, limits, licence | every command key present | Read + ERT | F0 |
