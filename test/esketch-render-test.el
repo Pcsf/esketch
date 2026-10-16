@@ -229,5 +229,34 @@ places it."
                 (buffer-string)))))
     (should (equal (esketch-render-svg doc) (esketch-render-svg doc)))))
 
+(ert-deftest esketch-render-test-frame-and-image ()
+  "Frames draw Excalidraw's outline; a cropped image shows only its window."
+  (let* ((frame (esketch-new-element "frame" 0 0 300 200))
+         (img (esketch-new-element "image" 0 0 136 131))
+         (doc (list :obj (cons "elements" (vector frame img))
+                    (cons "files" (list :obj (cons "f1" (list :obj (cons "dataURL" "data:image/png;base64,AAAA"))))))))
+    (esketch-put img "fileId" "f1")
+    (esketch-put img "scale" [1 1])
+    (esketch-put img "crop" (list :obj (cons "x" 0) (cons "y" 0) (cons "width" 136)
+                                  (cons "height" 131) (cons "naturalWidth" 600)
+                                  (cons "naturalHeight" 131)))
+    (let ((svg (esketch-render-svg doc)))
+      (should (string-match-p "<rect[^>]*rx=\"8\"[^>]*stroke=\"#bbb\"" svg))
+      (should (string-match-p "viewBox=\"0 0 136 131\"" svg))
+      (should (string-match-p "<image[^>]*width=\"600\"" svg)))))
+
+(ert-deftest esketch-render-test-arrow-label-mask ()
+  "A label on an arrow cuts the line under it, as in Excalidraw."
+  (let* ((arrow (esketch-new-element "arrow" 0 0 200 0))
+         (label (esketch-new-element "text" 0 0 40 25))
+         (doc (list :obj (cons "elements" (vector arrow label)))))
+    (esketch-put label "text" "go")
+    (esketch-put label "containerId" (esketch-get arrow "id"))
+    (esketch-put arrow "boundElements"
+                 (vector (list :obj (cons "id" (esketch-get label "id")) (cons "type" "text"))))
+    (let ((svg (esketch-render-svg doc)))
+      (should (string-match-p "mask=\"url(#mask-" svg))
+      (should (string-match-p "<mask[^>]*maskUnits=\"userSpaceOnUse\"" svg)))))
+
 (provide 'esketch-render-test)
 ;;; esketch-render-test.el ends here

@@ -760,6 +760,32 @@ empty text, and elements too small to see (isInvisiblySmallElement)."
                 (- (+ (esketch-get c "y") (cadr mid)) (/ (esketch-get el "height") 2.0))))
       (list (esketch-get el "x") (esketch-get el "y")))))
 
+(defvar esketch-render--files nil
+  "The \"files\" object of the document being drawn: image data by id.")
+
+(defun esketch-render--arrow-label (doc el)
+  "The live text bound to arrow EL of DOC, if any."
+  (let ((b (cl-find "text" (let ((be (esketch-get el "boundElements"))) (and (vectorp be) (append be nil)))
+                    :key (lambda (x) (esketch-get x "type")) :test #'equal)))
+    (and b (let ((tx (esketch-element doc (esketch-get b "id"))))
+             (and tx (esketch-live-p tx) tx)))))
+
+(defun esketch-render--label-mask (doc el label id ox oy dx dy)
+  "Excalidraw's mask that cuts arrow EL's line around its LABEL."
+  (let* ((pad 5)
+         (o (esketch-render--text-origin doc label))
+         (w (+ (esketch-get el "width") 100 ox))
+         (h (+ (esketch-get el "height") 100 oy)))
+    (format "<mask%s><rect%s/><rect%s/></mask>"
+            (esketch-render--attrs "id" id "maskUnits" "userSpaceOnUse"
+                                   "x" 0 "y" 0 "width" w "height" h)
+            (esketch-render--attrs "x" 0 "y" 0 "fill" "#fff" "width" w "height" h)
+            (esketch-render--attrs "x" (- (+ (car o) dx) pad) "y" (- (+ (cadr o) dy) pad)
+                                   "fill" "#000"
+                                   "width" (+ (esketch-get label "width") (* 2 pad))
+                                   "height" (+ (esketch-get label "height") (* 2 pad))
+                                   "opacity" "1"))))
+
 (defun esketch-render-element-svg (doc el dx dy &optional bg)
   "SVG for element EL of DOC, shifted by DX, DY.  BG is the canvas color."
   (let* ((type (esketch-get el "type"))
@@ -787,18 +813,70 @@ empty text, and elements too small to see (isInvisiblySmallElement)."
                      d (concat fade " stroke-linecap=\"round\"" transform)))
                   (esketch-render--shape-drawables el bg) ""))
       ((or "line" "arrow")
-       (concat "<g stroke-linecap=\"round\">"
-               (mapconcat
-                (lambda (d)
-                  (esketch-render--drawable-svg
-                   d (concat fade transform
-                             (and (equal type "line")
-                                  (esketch-render--loop-p (esketch-render--points el))
-                                  (not (equal (esketch-get el "backgroundColor")
-                                              "transparent"))
-                                  " fill-rule=\"evenodd\""))))
-                (esketch-render--shape-drawables el bg) "")
-               "</g>"))
+       (let* ((label (esketch-render--arrow-label doc el))
+              (mask-id (and label (concat "mask-" (esketch-get el "id")))))
+         (concat (format "<g stroke-linecap=\"round\"%s>"
+                         (if mask-id (format " mask=\"url(#%s)\"" (esketch-render--xml mask-id)) ""))
+                 (mapconcat
+                  (lambda (d)
+                    (esketch-render--drawable-svg
+                     d (concat fade transform
+                               (and (equal type "line")
+                                    (esketch-render--loop-p (esketch-render--points el))
+                                    (not (equal (esketch-get el "backgroundColor")
+                                                "transparent"))
+                                    " fill-rule=\"evenodd\""))))
+                  (esketch-render--shape-drawables el bg) "")
+                 "</g>"
+                 (if label (esketch-render--label-mask doc el label mask-id ox oy dx dy) ""))))
+      ("image"
+       (let* ((files esketch-render--files)
+              (file (and (esketch-obj-p files)
+                         (esketch-get files (esketch-get el "fileId"))))
+              (url (and (esketch-obj-p file) (esketch-get file "dataURL")))
+              (scale (esketch-get el "scale")))
+         (if (not (stringp url))
+             ""
+           (let* ((w (esketch-get el "width")) (h (esketch-get el "height"))
+                  (crop (esketch-get el "crop"))
+                  (cropped (esketch-obj-p crop))
+                  (uw (if cropped (/ w (/ (float (esketch-get crop "width"))
+                                          (esketch-get crop "naturalWidth")))
+                        w))
+                  (uh (if cropped (/ h (/ (float (esketch-get crop "height"))
+                                          (esketch-get crop "naturalHeight")))
+                        h))
+                  (ncx (if cropped (/ (esketch-get crop "x")
+                                      (/ (float (esketch-get crop "naturalWidth")) uw))
+                         0))
+                  (ncy (if cropped (/ (esketch-get crop "y")
+                                      (/ (float (esketch-get crop "naturalHeight")) uh))
+                         0)))
+             (format "<g%s%s><svg%s><image%s/></svg></g>" transform (or fade "")
+                     (esketch-render--attrs
+                      "x" 0 "y" 0 "width" (round w) "height" (round h)
+                      "viewBox" (format "%s %s %s %s" (esketch-render--num ncx)
+                                        (esketch-render--num ncy) (esketch-render--num w)
+                                        (esketch-render--num h))
+                      "preserveAspectRatio" "none" "overflow" "hidden")
+                     (esketch-render--attrs
+                    "href" url "xlink:href" url
+                    "width" (esketch-render--num uw)
+                    "height" (esketch-render--num uh)
+                    "preserveAspectRatio" "none"
+                    "transform"
+                    (and (vectorp scale) (or (/= (aref scale 0) 1) (/= (aref scale 1) 1))
+                         (format "translate(%s %s) scale(%s %s) translate(%s %s)"
+                                 (esketch-render--num cx) (esketch-render--num cy)
+                                 (esketch-render--num (aref scale 0))
+                                 (esketch-render--num (aref scale 1))
+                                 (esketch-render--num (- cx)) (esketch-render--num (- cy))))))))))
+      ((or "frame" "magicframe")
+       (format "<rect%s%s/>" transform
+               (esketch-render--attrs
+                "width" (concat (esketch-render--num (esketch-get el "width")) "px")
+                "height" (concat (esketch-render--num (esketch-get el "height")) "px")
+                "rx" "8" "ry" "8" "fill" "none" "stroke" "#bbb" "stroke-width" "2")))
       ("freedraw"
        (format "<g%s%s>%s<path%s/></g>" transform (or fade "")
                (if (esketch-render--loop-p (esketch-render--points el))
@@ -857,7 +935,9 @@ on top, in drawing coordinates."
                           (vconcat (mapcar #'esketch-render--restore
                                            (cl-remove-if #'esketch-render--invisible-p
                                                          (esketch-elements doc)))))
-                    (cons "appState" (esketch-get doc "appState"))))
+                    (cons "appState" (esketch-get doc "appState"))
+                    (cons "files" (esketch-get doc "files"))))
+         (esketch-render--files (esketch-get doc "files"))
          (pad esketch-render--padding)
          (bg (let ((app (esketch-get doc "appState")))
                (or (and app (stringp (esketch-get app "viewBackgroundColor"))
@@ -872,6 +952,7 @@ on top, in drawing coordinates."
      (format "<svg%s>"
              (esketch-render--attrs
               "version" "1.1" "xmlns" "http://www.w3.org/2000/svg"
+              "xmlns:xlink" "http://www.w3.org/1999/xlink"
               "viewBox" (format "0 0 %s %s" (esketch-render--num w)
                                 (esketch-render--num h))
               "width" w "height" h))

@@ -459,10 +459,12 @@ real DOM events at home.
 - [ ] See the Org preview and the in-place editor in a real GUI frame, in
   your own Emacs -- verified so far through librsvg renders of the exact
   overlay image and ERT, not a frame screenshot.
-- [ ] Draw images, frames, embeds, sticky notes and constant-width
-  (laser) freehand strokes -- none occurs in the corpus; today they are
-  skipped or drawn as the variable-width stroke.
-- [ ] Mask under text bound to an arrow, as Excalidraw cuts the line around
-  the label -- the label is drawn, the line is not cut.
+- [x] Draw images (with crop and flips), frame outlines, and the mask that
+  cuts an arrow's line under its label -- the corpus image and 8 masks
+  match Excalidraw's export when viewed side by side.
+- [ ] Draw embeds, sticky notes and constant-width (laser geometry) freehand
+  strokes in Emacs -- none occurs in the corpus; embeds and sticky notes are
+  skipped, constant-width strokes are drawn variable-width. The browser
+  editor (Excalidraw itself) draws all of them.
 - [ ] Create the private GitHub remote `Pcsf/esketch` -- waits on the
   principal's go-ahead.
