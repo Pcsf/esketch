@@ -27,7 +27,8 @@ the package, no network, no local server, no browser extension.
   export does: every path of 44 real drawings matches.  It uses
   =esketch-rough.el= and =esketch-freehand.el=, Lisp ports of roughjs 4.6.4
   and perfect-freehand 1.2.0 (both MIT), the libraries Excalidraw draws with.
-  Text falls back to the system sans-serif until the hand-drawn font ships.
+  Text is drawn from the outlines of Excalidraw's hand-drawn fonts
+  (=esketch-fonts.el=), so it looks right in Emacs with nothing installed.
 
 * Dependencies
 
@@ -40,7 +41,7 @@ Build and test, at home only, never needed on the target machine:
 - GNU make.
 - bun, to regenerate =test/json-cases.json= (=bun tools/gen-cases.ts=) and
   for =make test-corpus=.
-- gh, authenticated, for =make corpus=.
+- gh, authenticated, for =make corpus= and =make fonts=.
 - Chromium, for =make ref-basic= and =make test-render-corpus=, which run
   real Excalidraw (=@excalidraw/utils= 0.1.5, installed with =bun install=
   in =tools/=) as the reference.
@@ -62,4 +63,7 @@ runtime code calls a process or network function or needs Emacs 28.
 
 * Licence
 
-GPL-3.0-or-later.
+GPL-3.0-or-later.  =esketch-rough.el= and =esketch-freehand.el= port MIT
+libraries and keep their notices.  =esketch-fonts.el= holds glyph outlines of
+Excalifont and Virgil, licensed under the SIL Open Font License 1.1
+(=fonts/OFL.txt=); Excalifont is a trademark of Excalidraw.

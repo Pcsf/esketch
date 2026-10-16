@@ -164,16 +164,40 @@
       (should (> (length shapes) 1)))))
 
 (ert-deftest esketch-render-test-text-placement ()
+  "A font esketch does not ship falls back to SVG text, placed as Excalidraw
+places it."
   (let ((el (esketch-new-element "text" 0 0 99 25)))
     (esketch-put el "text" "a<b\nline 2")
     (esketch-put el "textAlign" "center")
+    (esketch-put el "fontFamily" 2)
     (let ((svg (esketch-render--text-svg el)))
       (should (string-match-p "x=\"49.5\"" svg))
-      ;; JavaScript gives these for Excalifont at 20px, lineHeight 1.25
-      (should (string-match-p "y=\"17.619999999999997\"" svg))
-      (should (string-match-p "y=\"42.62\"" svg))
+      ;; JavaScript gives these for Helvetica at 20px, lineHeight 1.25
+      (should (string-match-p "y=\"17.900390625\"" svg))
       (should (string-match-p "a&lt;b" svg))
-      (should (string-match-p "font-family=\"Excalifont, Xiaolai, sans-serif, Segoe UI Emoji\"" svg)))))
+      (should (string-match-p "font-family=\"Helvetica, sans-serif, Segoe UI Emoji\"" svg)))))
+
+(ert-deftest esketch-render-test-text-glyphs ()
+  "Excalifont text is drawn from the shipped outlines, centred by its advances."
+  (let ((el (esketch-new-element "text" 0 0 99 25)))
+    (esketch-put el "text" "Sensor")
+    (esketch-put el "textAlign" "center")
+    (let* ((svg (esketch-render--text-svg el))
+           (w (esketch-render--text-width 5 20 "Sensor")))
+      (should (string-match-p "<g class=\"esketch-text\"" svg))
+      (should-not (string-match-p "<text" svg))
+      (should (string-match-p
+               (regexp-quote
+                (format "translate(%s 17.619999999999997) scale(0.02)"
+                        (esketch-json-number-string (- 49.5 (/ w 2.0)))))
+               svg))
+      (should (= (cl-count ?< svg) 8)))))
+
+(ert-deftest esketch-render-test-text-missing-glyph ()
+  "A character the font lacks sends the whole line to SVG text."
+  (let ((el (esketch-new-element "text" 0 0 99 25)))
+    (esketch-put el "text" "x \u4e2d")
+    (should (string-match-p "<text" (esketch-render--text-svg el)))))
 
 (ert-deftest esketch-render-test-document ()
   "The basic fixture renders as one well-formed SVG with every live element."
@@ -193,7 +217,7 @@
     (should (>= (cl-count ?g (split-string svg "<" t)
                           :key (lambda (s) (aref s 0)))
                 8))
-    (should (string-match-p "Sensor" svg))
+    (should (string-match-p "class=\"esketch-text\"" svg))
     (should (string-match-p "stroke-dasharray=\"8 10.5\"\\|stroke-dasharray=\"8 10\"" svg))))
 
 (ert-deftest esketch-render-test-deterministic ()

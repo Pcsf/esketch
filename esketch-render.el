@@ -40,6 +40,7 @@
 (require 'esketch-model)
 (require 'esketch-rough)
 (require 'esketch-freehand)
+(require 'esketch-fonts)
 
 (defvar esketch-render-style 'hand
   "`hand' for Excalidraw's sketchy look, `plain' for straight lines.")
@@ -547,8 +548,47 @@ EXTRA is a string of attributes for the enclosing <g>."
          (gap (/ (+ (- line-px (* em (nth 4 m))) (* em (nth 5 m))) 2)))
     (+ (* em (nth 4 m)) gap)))
 
+(defun esketch-render--glyph-line (font line x y size anchor color)
+  "LINE drawn from FONT's outlines with its baseline at Y, or nil when
+FONT lacks a character."
+  (let ((tab (nth 5 font)) (k (/ (float size) (nth 2 font)))
+        (adv 0) (parts nil))
+    (when (cl-every (lambda (c) (gethash c tab)) line)
+      (mapc (lambda (c)
+              (let ((g (gethash c tab)))
+                (unless (string= (cdr g) "")
+                  (push (format "<path transform=\"translate(%s 0)\" d=\"%s\"/>"
+                                (esketch-render--num adv) (cdr g))
+                        parts))
+                (setq adv (+ adv (car g)))))
+            line)
+      (let ((x0 (- x (pcase anchor ("middle" (/ (* adv k) 2.0)) ("end" (* adv k)) (_ 0)))))
+        (format "<g class=\"esketch-text\"%s>%s</g>"
+                (esketch-render--attrs
+                 "transform" (format "translate(%s %s) scale(%s)"
+                                     (esketch-render--num x0) (esketch-render--num y)
+                                     (esketch-render--num k))
+                 "fill" color)
+                (apply #'concat (nreverse parts)))))))
+
+(defun esketch-render--text-width (font-id size text)
+  "Width of the widest line of TEXT in FONT-ID at SIZE, or nil if unknown."
+  (let ((font (assq font-id esketch-fonts)))
+    (when font
+      (let ((tab (nth 5 font)) (best 0))
+        (catch 'unknown
+          (dolist (line (split-string text "\n"))
+            (let ((w 0))
+              (mapc (lambda (c) (let ((g (gethash c tab)))
+                                  (unless g (throw 'unknown nil))
+                                  (setq w (+ w (car g)))))
+                    line)
+              (setq best (max best w))))
+          (/ (* best size) (float (nth 2 font))))))))
+
 (defun esketch-render--text-svg (el)
-  (let* ((lines (split-string (replace-regexp-in-string
+  (let* ((font (assq (esketch-get el "fontFamily") esketch-fonts))
+         (lines (split-string (replace-regexp-in-string
                                "\r\n?" "\n" (esketch-get el "text"))
                               "\n"))
          (size (esketch-get el "fontSize"))
@@ -565,7 +605,11 @@ EXTRA is a string of attributes for the enclosing <g>."
     (mapconcat
      (lambda (line)
        (setq i (1+ i))
-       (format "<text%s>%s</text>"
+       (or
+        (and font (esketch-render--glyph-line
+                   font line x (+ (* i line-px) voff) size anchor
+                   (esketch-get el "strokeColor")))
+        (format "<text%s>%s</text>"
                (esketch-render--attrs
                 "x" x "y" (+ (* i line-px) voff)
                 "font-family" (esketch-render--font-family
@@ -574,7 +618,7 @@ EXTRA is a string of attributes for the enclosing <g>."
                 "fill" (esketch-get el "strokeColor")
                 "text-anchor" anchor "style" "white-space: pre;"
                 "direction" "ltr" "dominant-baseline" "alphabetic")
-               (esketch-render--xml line)))
+               (esketch-render--xml line))))
      lines "")))
 
 ;;;; Legacy and incomplete elements

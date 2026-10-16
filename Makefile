@@ -6,10 +6,10 @@
 EMACS ?= emacs
 BUN   ?= bun
 BATCH  = $(EMACS) -Q --batch -L .
-EL     = esketch-json.el esketch-model.el esketch-rough.el esketch-freehand.el esketch-render.el
+EL     = esketch-json.el esketch-model.el esketch-rough.el esketch-freehand.el esketch-fonts.el esketch-render.el
 BUILD  = build
 
-.PHONY: all compile test test-el test-render ref-basic test-render-corpus audit corpus test-corpus clean
+.PHONY: all compile test test-el test-render ref-basic test-render-corpus audit corpus test-corpus fonts clean
 
 all: compile test audit
 
@@ -33,7 +33,7 @@ audit: | $(BUILD)
 	@test "$$(grep -cE '\($(EMACS28_FNS)' $(BUILD)/planted.txt)" = 1 || { echo "audit: version pattern is broken"; exit 1; }
 	@if grep -nE '$(FORBIDDEN_CALLS)' $(EL); then echo "audit: runtime reaches outside Emacs"; exit 1; fi
 	@if grep -nE '\($(EMACS28_FNS)' $(EL); then echo "audit: runtime needs Emacs 28+"; exit 1; fi
-	@if grep -nE "^\(require '" $(EL) | grep -vE "'(cl-lib|subr-x|esketch-json|esketch-model|esketch-rough|esketch-freehand|esketch-render|browse-url)\)"; then \
+	@if grep -nE "^\(require '" $(EL) | grep -vE "'(cl-lib|subr-x|esketch-json|esketch-model|esketch-rough|esketch-freehand|esketch-fonts|esketch-render|browse-url)\)"; then \
 	  echo "audit: unexpected require"; exit 1; fi
 	@echo "audit: planted cases caught, runtime clean"
 
@@ -81,3 +81,14 @@ test-render-corpus: compile
 	@bad=0; for f in $(BUILD)/ref/*.svg; do \
 	  $(BUN) tools/compare-svg.ts $(BUILD)/esk/$$(basename $$f) $$f > $(BUILD)/cmp.txt || { bad=$$((bad+1)); echo "$$(basename $$f):"; head -3 $(BUILD)/cmp.txt; }; \
 	done; echo "test-render-corpus: $$(ls $(BUILD)/ref | wc -l) files, $$bad differ"; test $$bad = 0
+
+# Regenerates esketch-fonts.el and fonts/OFL.txt from Excalidraw's woff2
+# files at the pinned commit.
+EXCALIDRAW_REF = 4c37956b
+fonts: | $(BUILD)
+	mkdir -p $(BUILD)/fonts
+	for p in $$(gh api "repos/excalidraw/excalidraw/git/trees/$(EXCALIDRAW_REF)?recursive=1" --jq '.tree[].path' \
+	           | grep -E 'packages/excalidraw/fonts/(Excalifont|Virgil)/.*\.woff2$$'); do \
+	  gh api "repos/excalidraw/excalidraw/contents/$$p?ref=$(EXCALIDRAW_REF)" --jq .content | base64 -d > $(BUILD)/fonts/$$(basename $$p); \
+	done
+	$(BUN) tools/gen-font.ts $(BUILD)/fonts

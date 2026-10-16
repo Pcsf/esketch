@@ -2,7 +2,8 @@
 // esketch's and real Excalidraw's.  Paths are taken in document order and
 // numbers compared within 0.011, the 2-decimal rounding of the export.
 // Exit 1 on any difference.
-const [a, b] = process.argv.slice(2).map(f => require("fs").readFileSync(f, "utf8"));
+const strip = (s: string) => s.replace(/<g class="esketch-text"[^>]*>.*?<\/g>/g, "");
+const [a, b] = process.argv.slice(2).map(f => strip(require("fs").readFileSync(f, "utf8")));
 const paths = (s: string) => [...s.matchAll(/<path [^>]*?d="([^"]*)"/g)].map(m => m[1]);
 const pa = paths(a), pb = paths(b);
 let bad = 0;

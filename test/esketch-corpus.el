@@ -42,8 +42,30 @@
     (message "corpus: %d files, %d elements, %d match JSON.stringify, %d byte-identical to source, %.2f s"
              (length files) elements (- (length files) bad) identical
              (- (float-time) t0))
-    (let ((worse (esketch-corpus--edit-check files)))
-      (kill-emacs (if (and files (= bad 0) (= worse 0)) 0 1)))))
+    (let ((worse (esketch-corpus--edit-check files))
+          (text-ok (esketch-corpus--text-widths files)))
+      (kill-emacs (if (and files (= bad 0) (= worse 0) text-ok) 0 1)))))
+
+(defun esketch-corpus--text-widths (files)
+  "Compare shipped-font text widths with the widths Excalidraw measured.
+Pass when the median error is under 1 px and the 90th percentile under 3 px."
+  (require 'esketch-render)
+  (let ((errs nil))
+    (dolist (f files)
+      (mapc (lambda (el)
+              (let ((txt (esketch-get el "text")))
+                (when (and (equal (esketch-get el "type") "text") (stringp txt)
+                           (> (length txt) 2) (not (string-match-p "\n" txt))
+                           (esketch-live-p el))
+                  (let ((w (esketch-render--text-width (esketch-get el "fontFamily")
+                                                       (esketch-get el "fontSize") txt)))
+                    (when w (push (abs (- w (esketch-get el "width"))) errs))))))
+            (esketch-elements (esketch-file-doc (esketch-read-file f)))))
+    (setq errs (sort errs #'<))
+    (let ((n (length errs)))
+      (message "corpus text widths: %d lines, median error %.2f px, p90 %.2f px"
+               n (nth (/ n 2) errs) (nth (/ (* 9 n) 10) errs))
+      (and (> n 100) (< (nth (/ n 2) errs) 1.0) (< (nth (/ (* 9 n) 10) errs) 3.0)))))
 
 (defun esketch-corpus--edit-check (files)
   "Random edits on each of FILES; return how many added a link problem."

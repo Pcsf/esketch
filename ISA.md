@@ -1,6 +1,6 @@
 ---
 phase: climbing
-progress: 10/36
+progress: 12/36
 task: "Excalidraw-style diagram editor for Emacs that runs under corporate IT restrictions"
 slug: esketch
 iteration: 1
@@ -126,10 +126,14 @@ alike.
   draws every corpus file with esketch and with real Excalidraw
   (@excalidraw/utils 0.1.5 `exportToSvg` in headless Chromium) and compares
   every path; `make test-render` does the same offline for the basic fixture.
-- [ ] ISC-6: Text renders in a hand-drawn font that ships inside the package
-  and the page, with an OFL or compatible licence recorded in README. Probe:
-  page scanned for external font URLs (none); README licence line read.
-- [ ] ISC-7: Antecedent: A first-time viewer recognises an esketch drawing as
+- [x] ISC-6: Text renders in the hand-drawn fonts Excalidraw uses (Excalifont,
+  Virgil), shipped inside the package as glyph outlines so librsvg, which
+  ignores embedded web fonts, draws them with nothing installed; OFL 1.1
+  recorded in README and fonts/OFL.txt. Probe: corpus text widths from the
+  shipped advances against the widths Excalidraw measured (`make
+  test-corpus`, median under 1 px); librsvg render viewed. The page uses the
+  same outlines (ISC-13).
+- [x] ISC-7: Antecedent: A first-time viewer recognises an esketch drawing as
   "an Excalidraw sketch". Probe: side-by-side screenshots of the same fixture
   in excalidraw.com and in esketch (Emacs and page), viewed.
 
@@ -169,6 +173,7 @@ that without installing anything.
   page finds no `src=`/`href=` to a URL, no `@import`, no `fetch`, no
   `XMLHttpRequest`, no `WebSocket`, with a planted-positive page caught.
 - [ ] ISC-13: In a real browser the page draws every supported element type,
+  text included, from the same glyph outlines as Emacs,
   selects, moves, resizes, binds arrows, draws freehand, undoes and redoes,
   pans and zooms. Probe: headless Chromium run with real DOM events
   (`make verify`) plus a screenshot viewed.
@@ -295,6 +300,12 @@ maintainable.
   for drawing only; the saved file keeps what the user had.
 - 2026-10-16 Fog "how faithfully to match Excalidraw's rough output" closed:
   ISC-5 and ISC-5.2 settled it at path-for-path identity with real Excalidraw.
+- 2026-10-16 Text is drawn as glyph outlines (esketch-fonts.el, generated
+  from Excalidraw's woff2 by tools/gen-font.ts), not as SVG text with an
+  embedded font: librsvg uses only installed fonts, and installing fonts is
+  what locked-down machines forbid. Fonts esketch does not ship (Helvetica,
+  Cascadia, Nunito...) and characters missing from the outlines fall back to
+  SVG text.
 - 2026-10-16 Hand-off from page to Emacs is clipboard or download, never a
   localhost server: endpoint protection often flags listening sockets.
 
@@ -317,6 +328,10 @@ maintainable.
   bugs fail it.
 - ISC-5.1: ERT freehand suite, max deviation 1.1e-13, 35 d strings exact;
   four planted bugs fail it.
+- ISC-6: `make test-corpus` 725 labels, median 0.34 px, p90 2.04 px; ERT
+  glyph and fallback tests.
+- ISC-7: librsvg render beside Excalidraw's own font-embedded export, fixture
+  and a 200-path diagram, viewed: indistinguishable.
 - ISC-A4: MIT notices for roughjs and perfect-freehand in the ported files
   (grep); no Excalidraw application code in the package.
 - ISC-5.2: `make test-render-corpus` 44 files, 3513 paths, 0 differ; a
@@ -356,7 +371,7 @@ real DOM events at home.
 | ISC-5 | parity | esketch-rough vs real roughjs 4.6.4, 138 cases | numbers within 1e-6 | ERT | F2 |
 | ISC-5.1 | parity | esketch-freehand vs real perfect-freehand 1.2.0, 52 cases | outline within 1e-6, d exact | ERT | F2 |
 | ISC-5.2 | parity | every corpus file drawn by esketch and by Excalidraw | 0 paths differ beyond 2-decimal rounding | make test-render-corpus | F2 |
-| ISC-6 | scan | external font URLs in page | none | ERT | F2 |
+| ISC-6 | measure | shipped-font text widths vs Excalidraw's measured widths, corpus | median under 1 px, p90 under 3 px | make test-corpus | F2 |
 | ISC-7 | visual | side-by-side screenshots | recognised as Excalidraw style | viewed | F2 |
 | ISC-8 | behaviour | synthetic mouse edits and undo | model correct each step | ERT | F3 |
 | ISC-9 | behaviour | arrow follows dragged shape | stays bound | ERT + screenshot | F3 |
